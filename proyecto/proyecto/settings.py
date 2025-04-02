@@ -28,6 +28,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+APPEND_SLASH = False
+
+
 
 # Application definition
 
@@ -38,8 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'apps.pacientes',
-    'apps.servicios',
+    'apps.administrator',
+    'apps.authentication',
+    'apps.consultant',
+    'apps.services',
 ]
 
 MIDDLEWARE = [
@@ -78,11 +83,14 @@ WSGI_APPLICATION = 'proyecto.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'proyecto_desarrollo_1',
+        'USER': 'proyecto_desarrollo_1_user',
+        'PASSWORD': 'GUjNW6IElJGfIt32rN0c9OTsdQreWyhC',
+        'HOST': 'dpg-cvm8krvgi27c7399sgp0-a.oregon-postgres.render.com',
+        'PORT': '5432',  # El puerto por defecto de PostgreSQL
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
