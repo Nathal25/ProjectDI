@@ -1,4 +1,4 @@
-from .utils import generar_jwt, decodificar_jwt
+from .utils import generar_jwt, decodificar_jwt, get_datos_usuario
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Admin, Asesor, Paciente, Usuario
@@ -96,12 +96,4 @@ def validar_token_api(request):
         return Response({"message": "Token inválido o expirado"}, status=401)
     
 
-
-def get_datos_usuario(usuario_id):
-    try:
-        usuario = Usuario.objects.get(id=usuario_id)
-        serializer = UsuarioSerializer(usuario)
-        return serializer.data
-    except Usuario.DoesNotExist:
-        return None
 
