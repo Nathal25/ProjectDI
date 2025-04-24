@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.validators import RegexValidator
 
-
 class Usuario(models.Model):
     ROLES = [
         ('admin', 'Admin'),
