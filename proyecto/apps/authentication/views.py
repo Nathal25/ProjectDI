@@ -32,17 +32,3 @@ def login_usuario_api(request):
         return Response(fields_list, status=200)
 
     return Response({"message": "Usuario no esta regristrado"}, status=201)
-
-# @api_view(['POST'])
-# def login_usuario_api(request):
-#     cedula = request.data.get("cedula")  # verifica si existe la cedula
-#     usuario = Usuario.objects.filter(cedula=cedula)
-
-#     # Serializar el QuerySet a JSON
-#     usuarios_json = serialize('json', usuario)
-#     # Convertir la cadena JSON en un objeto Python
-#     usuarios_data = json.loads(usuarios_json)
-
-#     fields_list = [item['fields'] for item in usuarios_data]
-#     # Retornar el objeto JSON
-#     return Response(fields_list, status=200)
