@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.validators import RegexValidator
 
-
 class Usuario(models.Model):
     ROLES = [
         ('admin', 'Admin'),
@@ -43,12 +42,14 @@ class Paciente(models.Model):
 
 class Asesor(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)  # Agregado para almacenar la contraseña del asesor
 
     def __str__(self):
         return self.usuario.nombre  # Arreglado
 
 class Admin(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)    # Agregado para almacenar la contraseña del admin
 
     def __str__(self):
         return self.usuario.nombre  # Arreglado

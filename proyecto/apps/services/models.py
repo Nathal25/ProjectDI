@@ -1,9 +1,9 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from apps.authentication.models import Admin,Asesor
+from apps.authentication.models import Admin,Asesor, Usuario
 
-
+MAX_TURNO=100
 #Tabla de puntos de atencion.
 class PuntoAtencion(models.Model):
     nombre = models.CharField(max_length=100)
@@ -18,6 +18,7 @@ class PuntoAtencion(models.Model):
 class ServicioBase(models.Model):
     prioritario = models.IntegerField(unique=True)
     general = models.IntegerField(unique=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
     punto_atencion = models.ForeignKey(
         PuntoAtencion,
         on_delete=models.CASCADE,
@@ -40,24 +41,25 @@ class Asesoramiento(ServicioBase):
     def __str__(self):
         return "Asesoramiento"
 
-# Función para manejar el incremento y reinicio de campos
-def manejar_campo_autoincremental(sender, instance, campo):
-    if not getattr(instance, campo):  # Verifica si el campo está vacío
-        ultimo_valor = sender.objects.aggregate(
-            max_valor=models.Max(campo)
-        )['max_valor']
-        
-        nuevo_valor = 1 if (ultimo_valor is None or ultimo_valor >= 100) else ultimo_valor + 1
-        setattr(instance, campo, nuevo_valor)
+# Lógica para asignar turnos (sin punto de atención)
+def obtener_siguiente_turno(modelo, campo):
+    turnos = modelo.objects.values_list(campo, flat=True)
+    turnos_existentes = [t for t in turnos if t is not None]
+    
+    if not turnos_existentes:
+        return 1
 
-# Señal genérica para manejar los campos prioritario y general
-@receiver(pre_save)
-def set_campos_autoincrementales(sender, instance, **kwargs):
-    # Aplica solo a modelos que hereden de ServicioBase
-    if issubclass(sender, ServicioBase):  
-        instance.full_clean()
-        for campo in ['prioritario', 'general']:  # Campos a manejar
-            manejar_campo_autoincremental(sender, instance, campo)
+    max_turno = max(turnos_existentes)
+    return 1 if max_turno >= MAX_TURNO else max_turno + 1
 
-
+@receiver(pre_save, sender=ConsultaMedica)
+@receiver(pre_save, sender=ReclamarMedicamentos)
+@receiver(pre_save, sender=Asesoramiento)
+def asignar_turnos(sender, instance, **kwargs):
+    if instance.usuario:
+        if not instance.prioritario and not instance.general:
+            if instance.usuario.discapacidad or instance.usuario.embarazo:
+                instance.prioritario = obtener_siguiente_turno(sender, "prioritario")
+            else:
+                instance.general = obtener_siguiente_turno(sender, "general")
 
