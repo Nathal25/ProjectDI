@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from apps.authentication.models import Admin,Asesor
+from apps.authentication.models import Admin,Asesor, Usuario
 
 
 #Tabla de puntos de atencion.
@@ -18,6 +18,7 @@ class PuntoAtencion(models.Model):
 class ServicioBase(models.Model):
     prioritario = models.IntegerField(unique=True)
     general = models.IntegerField(unique=True)
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, null=True, blank=True)
     punto_atencion = models.ForeignKey(
         PuntoAtencion,
         on_delete=models.CASCADE,

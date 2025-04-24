@@ -1,6 +1,9 @@
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
+from .models import Admin, Asesor, Paciente, Usuario
+from .serializers import UsuarioSerializer
+from django.core.serializers import serialize
 
 def generar_jwt(usuario_id):
     payload = {
@@ -18,4 +21,12 @@ def decodificar_jwt(token):
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:
+        return None
+
+def get_datos_usuario(usuario_id):
+    try:
+        usuario = Usuario.objects.get(id=usuario_id)
+        serializer = UsuarioSerializer(usuario)
+        return serializer.data
+    except Usuario.DoesNotExist:
         return None
