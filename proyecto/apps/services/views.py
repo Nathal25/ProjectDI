@@ -8,8 +8,11 @@ def solicitud_turnos(request):
     id = request.data.get("id")
     service = request.data.get("service")
 
-    usuario = get_datos_usuario(id)["discapacidad"]
-    return Response(usuario, status=201)
+    discapacidad = get_datos_usuario(id)["discapacidad"]
+
+    if discapacidad != None:
+        return Response(discapacidad, status=201)
+    return Response({"mensaje": "Usuario sin discapacidad"})
 
 @api_view(['POST'])
 def embarazo(request):
