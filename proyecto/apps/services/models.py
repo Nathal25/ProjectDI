@@ -4,27 +4,11 @@ from django.dispatch import receiver
 from apps.authentication.models import Admin,Asesor, Usuario
 
 MAX_TURNO=100
-#Tabla de puntos de atencion.
-class PuntoAtencion(models.Model):
-    nombre = models.CharField(max_length=100)
-    admin = models.ForeignKey(Admin, on_delete=models.CASCADE, related_name='puntos_admin')
-    asesor = models.ForeignKey(Asesor, on_delete=models.CASCADE, related_name='puntos_asesor')
-    servicio_ofrecido = models.CharField(max_length=100)  # Puedes hacer una FK si quieres enlazar esto
-
-    def __str__(self):
-        return self.nombre
-
 # Clase base abstracta para centralizar campos comunes
 class ServicioBase(models.Model):
     prioritario = models.IntegerField(unique=True,null=True, default=None, blank=True)
     general = models.IntegerField(unique=True,null=True, default=None, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
-    punto_atencion = models.ForeignKey(
-        PuntoAtencion,
-        on_delete=models.CASCADE,
-        related_name='%(class)s_relacionados',  # ¡Solución clave!
-        null=True
-    )
     
     class Meta:
         abstract = True  # Define que esta clase no creará tabla en la base de datos

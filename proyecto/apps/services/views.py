@@ -1,7 +1,7 @@
 #from apps.authentication import models
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, PuntoAtencion, Usuario
+from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario
 from django.db import transaction, models
 from django.db.models import Max
 
@@ -33,14 +33,14 @@ def solicitud_turnos(request):
 
     try:
         with transaction.atomic():
-           # punto = usuario.puntoatencion
+            punto = usuario.puntoAtencion
             if usuario.discapacidad:
-                ultimo = modelo_servicio.objects.filter(punto_atencion=None).aggregate(max_p=models.Max("prioritario"))["max_p"] or 0
-                turno = modelo_servicio.objects.create(prioritario=ultimo + 1, general=None, usuario=usuario, punto_atencion=None)
+                ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_p=models.Max("prioritario"))["max_p"] or 0
+                turno = modelo_servicio.objects.create(prioritario=ultimo + 1, general=None, usuario=usuario)
                 return Response({"turno_prioritario": turno.prioritario}, status=201)
             else:
-                ultimo = modelo_servicio.objects.filter(punto_atencion=None).aggregate(max_g=models.Max("general"))["max_g"] or 0
-                turno = modelo_servicio.objects.create(prioritario=None, general=ultimo + 1, usuario=usuario, punto_atencion=None)
+                ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_g=models.Max("general"))["max_g"] or 0
+                turno = modelo_servicio.objects.create(prioritario=None, general=ultimo + 1, usuario=usuario)
                 return Response({"turno_general": turno.general}, status=201)
     except Exception as e:
         return Response({"error": str(e)}, status=500)

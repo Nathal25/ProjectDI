@@ -94,3 +94,23 @@ def validar_token_api(request):
         return Response({"message": "Token válido", "data": datos_usuario}, status=200)
     else:
         return Response({"message": "Token inválido o expirado"}, status=401)
+
+
+@api_view(['POST'])
+def cambiar_punto_atencion(request):
+    id_usuario = request.query_params.get("id")  # <- viene por parámetro
+    punto_atencion = request.data.get("punto_atencion")  # <- este sí viene en el body
+
+    if not id_usuario or not punto_atencion:
+        return Response({"message": "Faltan datos: id o punto de atención"}, status=400)
+
+    try:
+        usuario = Usuario.objects.get(pk=id_usuario)
+        usuario.puntoAtencion = punto_atencion  # asegurate del nombre exacto del campo
+        usuario.save()
+        return Response({"message": "Punto de atención actualizado"}, status=200)
+    except Usuario.DoesNotExist:
+        return Response({"message": "Usuario no encontrado"}, status=404)
+    except Exception as e:
+        return Response({"message": "Error al actualizar el punto de atención", "error": str(e)}, status=500)
+

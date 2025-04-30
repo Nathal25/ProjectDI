@@ -7,6 +7,12 @@ class Usuario(models.Model):
         ('paciente', 'Paciente'),
         ('asesor', 'Asesor'),
     ]
+    
+    PUNTOSATENCION = [
+        ('sur', 'Sur'),
+        ('centro', 'Centro'),
+        ('norte', 'Norte')
+    ]
 
     CONDICIONESPRIORITARIAS=[
         ('adulto de la tercera edad','Tercera-edad'),
@@ -23,7 +29,8 @@ class Usuario(models.Model):
                                 regex=r'^\d{10}$',
                                 message="El número de celular debe tener exactamente 10 dígitos y no puede ser negativo."
             )
-        ]) 
+        ])
+    puntoAtencion = models.CharField(max_length=10, choices=PUNTOSATENCION, default='sur') 
     sexo = models.CharField(max_length=10, choices=[('m', 'M'), ('f', 'F')], default='m')
     correo = models.EmailField(max_length=254, unique=True, null=True)
     rol = models.CharField(max_length=50, choices=ROLES, default='paciente')  # Cambié 'user' por 'paciente' ya que 'user' no está en choices
