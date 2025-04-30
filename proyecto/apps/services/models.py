@@ -16,13 +16,14 @@ class PuntoAtencion(models.Model):
 
 # Clase base abstracta para centralizar campos comunes
 class ServicioBase(models.Model):
-    prioritario = models.IntegerField(unique=True)
-    general = models.IntegerField(unique=True)
+    prioritario = models.IntegerField(unique=True,null=True, default=None, blank=True)
+    general = models.IntegerField(unique=True,null=True, default=None, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
     punto_atencion = models.ForeignKey(
         PuntoAtencion,
         on_delete=models.CASCADE,
-        related_name='%(class)s_relacionados'  # ¡Solución clave!
+        related_name='%(class)s_relacionados',  # ¡Solución clave!
+        null=True
     )
     
     class Meta:
@@ -63,3 +64,4 @@ def asignar_turnos(sender, instance, **kwargs):
             else:
                 instance.general = obtener_siguiente_turno(sender, "general")
 
+ 

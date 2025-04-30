@@ -94,6 +94,3 @@ def validar_token_api(request):
         return Response({"message": "Token válido", "data": datos_usuario}, status=200)
     else:
         return Response({"message": "Token inválido o expirado"}, status=401)
-    
-
-
