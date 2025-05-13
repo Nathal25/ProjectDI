@@ -84,10 +84,10 @@ WSGI_APPLICATION = 'proyecto.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'proyecto_desarrollo_1',
-        'USER': 'proyecto_desarrollo_1_user',
-        'PASSWORD': 'GUjNW6IElJGfIt32rN0c9OTsdQreWyhC',
-        'HOST': 'dpg-cvm8krvgi27c7399sgp0-a.oregon-postgres.render.com',
+        'NAME': 'proyectod1_p7se',
+        'USER': 'proyectod1_p7se_user',
+        'PASSWORD': 'ABFByTJOch51GOBf0owxFEwNRwRJdC09',
+        'HOST': 'dpg-d0aholer433s73fnf100-a.oregon-postgres.render.com',
         'PORT': '5432',  # El puerto por defecto de PostgreSQL
     }
 }
