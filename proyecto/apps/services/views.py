@@ -16,8 +16,6 @@ SERVICIOS = {
 def solicitud_turnos(request):
     id_usuario = request.query_params.get("id")
     servicio = request.query_params.get("service")
-    # if not usuario.puntoatencion:
-    #     return Response({"error": "El usuario no tiene un punto de atención asignado"}, status=400)
 
     if not id_usuario or not servicio:
         return Response({"error": "Faltan parámetros"}, status=400)

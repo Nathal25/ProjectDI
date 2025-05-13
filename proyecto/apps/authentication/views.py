@@ -1,40 +1,52 @@
 from .utils import generar_jwt, decodificar_jwt, get_datos_usuario
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Admin, Asesor, Paciente, Usuario
+from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
 import json
+import bcrypt
 
 @api_view(['POST'])
 def registrar_usuario_api(request):
-    serializer = UsuarioSerializer(data=request.data)
+    data = request.data.copy()
+    
+    # Validación de campos obligatorios
+    campos_requeridos = ['cedula', 'nombre', 'edad', 'celular', 'password']
+    for campo in campos_requeridos:
+        if campo not in data:
+            return Response({"message": f"Falta el campo: {campo}"}, status=400)
+
+    # Hash de contraseña
+    password_bytes = data["password"].encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    data["password"] = hashed.decode('utf-8')
+
+    serializer = UsuarioSerializer(data=data)
     if serializer.is_valid():
-        if request.data.get("edad") < 0:
-            return Response({"message": "Ingresa una edad valida"}, status=400)
+        #return Response({"message": "Entraste en el if"}, status=400)
+        if int(data.get("edad", 0)) < 0:
+            return Response({"message": "Ingresa una edad válida"}, status=400)
+        
         usuario = serializer.save()
-        Paciente.objects.create(usuario=usuario)
+
+        Usuario.objects.create(
+            cedula=usuario.cedula,
+            nombre=usuario.nombre,
+            edad=usuario.edad,
+            celular=usuario.celular,
+            puntoAtencion=usuario.puntoAtencion,
+            sexo=usuario.sexo,
+            correo=usuario.correo,
+            rol=usuario.rol,
+            discapacidad=usuario.discapacidad,
+            password=usuario.password
+        )
         return Response({"message": "Registro exitoso"}, status=201)
-    return Response(serializer.errors, status=400)
-
-@api_view(['POST'])
-def identifier_usuario_api(request):
-    cedula = request.data.get("cedula")  # verifica si existe la cedula
-    usuario = Usuario.objects.filter(cedula=cedula)
-    if Usuario.objects.filter(cedula=cedula).exists():
-    # Serializar el QuerySet a JSON
-        usuarios_json = serialize('json', usuario)
-        usuarios_data = json.loads(usuarios_json)
-        if usuario[0].rol == "admin" or  usuario[0].rol == "asesor":
-           return Response({"message": "Usuario requiere contraseña", 
-                            "data": usuarios_data[0]['fields']['cedula']}, status=400)
-        # Convertir la cadena JSON en un objeto Python
-        fields_list = [item['fields'] for item in usuarios_data]
-        # Retornar el objeto JSON
-        return Response(fields_list, status=200)
-
-    return Response({"message": "Usuario no esta regristrado"}, status=201)
+    
+    #return Response(serializer.errors, status=400)
 
 @api_view(['POST'])
 def validar_password_usuario_api(request):
@@ -49,35 +61,15 @@ def validar_password_usuario_api(request):
     except Usuario.DoesNotExist:
         return Response({"message": "Usuario no encontrado"}, status=404)
 
-    if usuario.rol == "admin":
-        try:
-            admin = Admin.objects.get(usuario=usuario)
-            if admin.password == password:
-                admin_json = serialize('json', [admin])
-                admin_data = json.loads(admin_json)
-                usuario_id = admin_data[0]['fields']['usuario']
-                return Response(generar_jwt(usuario_id), status=200)
-            else:
-                return Response({"message": "Contraseña incorrecta para administrador"}, status=401)
-        except Admin.DoesNotExist:
-            return Response({"message": "Este usuario no tiene datos de administrador"}, status=404)
-
-    elif usuario.rol == "asesor":
-        try:
-            asesor = Asesor.objects.get(usuario=usuario)
-            if asesor.password == password:
-                asesor_json = serialize('json', [asesor])
-                asesor_data = json.loads(asesor_json)
-                usuario_a_id = asesor_data[0]['fields']['usuario']
-                return Response(generar_jwt(usuario_a_id), status=200)
-            else:
-                return Response({"message": "Contraseña incorrecta para asesor"}, status=401)
-        except Asesor.DoesNotExist:
-            return Response({"message": "Este usuario no tiene datos de asesor"}, status=404)
-
-    else:
-        return Response({"message": "No se encontro el rol del usuario"}, status=400)
+    # Verificación directa desde Usuario
+    password_bytes = password.encode('utf-8')
+    stored_hash = usuario.password.encode('utf-8')
     
+    if bcrypt.checkpw(password_bytes, stored_hash):
+        return Response(generar_jwt(usuario.id), status=200)
+    else:
+        return Response({"message": "Contraseña incorrecta"}, status=401)
+
 
 @api_view(['GET'])  # Cambiamos a GET porque los tokens no se mandan por POST
 def validar_token_api(request):

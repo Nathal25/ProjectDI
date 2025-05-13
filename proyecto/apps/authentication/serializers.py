@@ -4,4 +4,12 @@ from .models import Usuario
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = '__all__'
+        fields = [
+            'cedula', 'nombre', 'edad', 'celular', 'puntoAtencion', 
+            'sexo', 'correo', 'rol', 'discapacidad', 'password'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'celular': {'validators': []}  # Desactiva validación duplicada
+        }
+
