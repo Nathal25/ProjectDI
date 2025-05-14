@@ -26,27 +26,15 @@ def registrar_usuario_api(request):
 
     serializer = UsuarioSerializer(data=data)
     if serializer.is_valid():
-        #return Response({"message": "Entraste en el if"}, status=400)
         if int(data.get("edad", 0)) < 0:
             return Response({"message": "Ingresa una edad válida"}, status=400)
         
-        usuario = serializer.save()
+        usuario = serializer.save() 
 
-        Usuario.objects.create(
-            cedula=usuario.cedula,
-            nombre=usuario.nombre,
-            edad=usuario.edad,
-            celular=usuario.celular,
-            puntoAtencion=usuario.puntoAtencion,
-            sexo=usuario.sexo,
-            correo=usuario.correo,
-            rol=usuario.rol,
-            discapacidad=usuario.discapacidad,
-            password=usuario.password
-        )
         return Response({"message": "Registro exitoso"}, status=201)
     
-    #return Response(serializer.errors, status=400)
+    return Response(serializer.errors, status=400)
+
 
 @api_view(['POST'])
 def validar_password_usuario_api(request):

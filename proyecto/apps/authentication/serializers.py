@@ -10,6 +10,8 @@ class UsuarioSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             'password': {'write_only': True},
-            'celular': {'validators': []}  # Desactiva validación duplicada
+            # Mantén los validadores del modelo para 'celular':
+            'celular': {'validators': []}  # Solo si necesitas desactivar validadores adicionales
         }
+
 
