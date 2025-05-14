@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from apps.authentication.models import Admin,Asesor, Usuario
+from apps.authentication.models import Usuario
 
 MAX_TURNO=100
 # Clase base abstracta para centralizar campos comunes

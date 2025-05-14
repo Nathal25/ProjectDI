@@ -1,7 +1,7 @@
 import jwt
 from django.conf import settings
 from datetime import datetime, timedelta
-from .models import Admin, Asesor, Paciente, Usuario
+from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 
