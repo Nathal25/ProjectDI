@@ -5,7 +5,6 @@ from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
-import json
 import bcrypt
 
 @api_view(['POST'])
@@ -28,6 +27,8 @@ def registrar_usuario_api(request):
     if serializer.is_valid():
         if int(data.get("edad", 0)) < 0:
             return Response({"message": "Ingresa una edad válida"}, status=400)
+        if Usuario.objects.filter(celular=data["celular"]).exists():
+            return Response({"message": "El celular ya esta registrado"}, status=400)
         
         usuario = serializer.save() 
 
