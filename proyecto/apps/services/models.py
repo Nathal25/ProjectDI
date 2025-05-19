@@ -6,6 +6,12 @@ from apps.authentication.models import Usuario
 MAX_TURNO=100
 # Clase base abstracta para centralizar campos comunes
 class ServicioBase(models.Model):
+    ESTADOS = [
+        ('Pendiente', 'pendiente'),
+        ('Atendido', 'atendido'),
+        ('Pasado', 'pasado'),
+    ]
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='Pendiente')
     prioritario = models.IntegerField(unique=True,null=True, default=None, blank=True)
     general = models.IntegerField(unique=True,null=True, default=None, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
@@ -41,6 +47,8 @@ def obtener_siguiente_turno(modelo, campo):
 @receiver(pre_save, sender=ReclamarMedicamentos)
 @receiver(pre_save, sender=Asesoramiento)
 def asignar_turnos(sender, instance, **kwargs):
+    if not instance.estado:
+        instance.estado = 'Pendiente'
     if instance.usuario:
         if not instance.prioritario and not instance.general:
             if instance.usuario.discapacidad or instance.usuario.embarazo:
