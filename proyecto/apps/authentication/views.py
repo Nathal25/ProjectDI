@@ -5,7 +5,9 @@ from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
+
 import bcrypt
+
 
 @api_view(['POST'])
 def registrar_usuario_api(request):
