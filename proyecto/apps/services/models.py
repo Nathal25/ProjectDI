@@ -9,7 +9,6 @@ class ServicioBase(models.Model):
     ESTADOS = [
         ('Pendiente', 'pendiente'),
         ('Atendido', 'atendido'),
-        ('Pasado', 'pasado'),
     ]
     estado = models.CharField(max_length=10, choices=ESTADOS, default='Pendiente')
     prioritario = models.IntegerField(unique=True,null=True, default=None, blank=True)
