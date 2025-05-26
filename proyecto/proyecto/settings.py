@@ -32,9 +32,9 @@ CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=False, cast=bool)
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
-# LOGIN_RATE_LIMIT = '5/m'
-# LOGIN_FAILS_LIMIT = 5
-# LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
+LOGIN_RATE_LIMIT = '5/m' #maxsimo 5 intentos de inicio de sesión por minuto
+LOGIN_FAILS_LIMIT = 5   # máximo 5 intentos fallidos de inicio de sesión
+LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
 
 
 ALLOWED_HOSTS = []
