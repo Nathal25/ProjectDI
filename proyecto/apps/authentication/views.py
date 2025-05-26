@@ -5,6 +5,7 @@ from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
+from django.utils.html import escape
 
 import bcrypt
 
@@ -19,6 +20,12 @@ def registrar_usuario_api(request):
         if campo not in data:
             return Response({"message": f"Falta el campo: {campo}"}, status=400)
 
+    # Escapar campos texto libre
+    data["nombre"] = escape(data["nombre"])
+    if "correo" in data:
+        data["correo"] = escape(str(data["correo"]))
+    data["celular"] = escape(data["celular"])  # si se acepta texto con símbolos
+    
     # Hash de contraseña
     password_bytes = data["password"].encode('utf-8')
     salt = bcrypt.gensalt()
@@ -90,6 +97,7 @@ def cambiar_punto_atencion(request):
     try:
         usuario = Usuario.objects.get(pk=id_usuario)
         usuario.puntoAtencion = punto_atencion  # asegurate del nombre exacto del campo
+        usuario.puntoAtencion = escape(punto_atencion)
         usuario.save()
         return Response({"message": "Punto de atención actualizado"}, status=200)
     except Usuario.DoesNotExist:
