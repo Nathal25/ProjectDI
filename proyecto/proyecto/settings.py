@@ -23,15 +23,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-sccf02(f&5)s%-m7bh!f%z9$-2@oze-&mhyfaf-5lo)cl-*^5#'
 #Implementación de la seguridad
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 
 # LOGIN_RATE_LIMIT = '5/m'
 # LOGIN_FAILS_LIMIT = 5
 # LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
