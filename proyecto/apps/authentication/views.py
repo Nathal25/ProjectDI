@@ -6,6 +6,10 @@ from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
 from django.utils.html import escape
+from django.conf import settings
+from django_ratelimit.decorators import ratelimit
+#from rest_framework.decorators import permission_classes
+#from rest_framework.permissions import IsAuthenticated
 
 import bcrypt
 
@@ -45,12 +49,19 @@ def registrar_usuario_api(request):
     
     return Response(serializer.errors, status=400)
 
-
+@ratelimit(key='post:cedula', rate=settings.LOGIN_RATE_LIMIT, method='POST', block=False)
 @api_view(['POST'])
 def validar_password_usuario_api(request):
-    cedula = request.data.get("cedula")
-    password = request.data.get("password")
+    if getattr(request, 'limited', False):
+        return Response(
+            {"message": "Demasiados intentos. Intenta de nuevo más tarde."},
+            status=429
+        )
 
+    # ✅ Aquí se extraen las variables del cuerpo del request
+    cedula = request.data.get('cedula')
+    password = request.data.get('password')
+        
     if not cedula or not password:
         return Response({"message": "Faltan la cédula o la contraseña"}, status=400)
 
@@ -85,8 +96,8 @@ def validar_token_api(request):
     else:
         return Response({"message": "Token inválido o expirado"}, status=401)
 
-
 @api_view(['POST'])
+#@permission_classes([isAuthenticated])
 def cambiar_punto_atencion(request):
     id_usuario = request.query_params.get("id")  # <- viene por parámetro
     punto_atencion = request.data.get("punto_atencion")  # <- este sí viene en el body
@@ -96,7 +107,7 @@ def cambiar_punto_atencion(request):
 
     try:
         usuario = Usuario.objects.get(pk=id_usuario)
-        usuario.puntoAtencion = punto_atencion  # asegurate del nombre exacto del campo
+        # Escapar el punto de atención para evitar inyecciones XSS
         usuario.puntoAtencion = escape(punto_atencion)
         usuario.save()
         return Response({"message": "Punto de atención actualizado"}, status=200)
