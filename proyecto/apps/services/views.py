@@ -6,6 +6,7 @@ from django.db import transaction, models
 from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from apps.authentication.views import decodificar_jwt, get_datos_usuario
+from django.core.cache import cache
 SERVICIOS = {
     "consulta": ConsultaMedica,
     "medicamentos": ReclamarMedicamentos,
@@ -14,6 +15,7 @@ SERVICIOS = {
 
 @api_view(['POST'])
 def pasar_turno(request):
+    # Validar token y rol de asesor
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         return Response({"error": "Token no proporcionado o mal formado"}, status=400)
@@ -36,30 +38,48 @@ def pasar_turno(request):
     if usuario.rol != 'asesor':
         return Response({"error": "No tienes permiso para modificar turnos"}, status=403)
 
-    turno_id = request.data.get("turno_id")
-    servicio = request.data.get("service")
-
-    if not turno_id or not servicio:
-        return Response({"error": "turno_id y service son requeridos"}, status=400)
+    # Obtener el servicio desde el body
+    servicio = request.data.get("servicio")
+    if not servicio:
+        return Response({"error": "Debes indicar el parámetro 'servicio'"}, status=400)
 
     Modelo = SERVICIOS.get(servicio.lower())
     if not Modelo:
         return Response({"error": "Servicio inválido"}, status=400)
 
-    try:
-        turno = Modelo.objects.get(pk=turno_id)
-    except Modelo.DoesNotExist:
-        return Response({"error": "Turno no encontrado"}, status=404)
+    # Buscar el siguiente turno pendiente (prioritario > general)
+    turno = Modelo.objects.filter(estado='Pendiente').order_by(
+        models.Case(
+            models.When(prioritario__isnull=False, then=0),
+            models.When(general__isnull=False, then=1),
+            default=2,
+        ),
+        'prioritario',
+        'general'
+    ).first()
 
-    if turno.estado == 'Pendiente':
-        turno.estado = 'Atendido'
-    elif turno.estado == 'Atendido':
-        turno.estado = 'Pasado'
-    else:
-        return Response({"error": f"No se puede avanzar el estado desde {turno.estado}"}, status=400)
+    if not turno:
+        return Response({"error": "No hay turnos pendientes"}, status=404)
 
+    turno.estado = 'Atendido'
     turno.save()
-    return Response({"status": f"Turno actualizado a {turno.estado.lower()}"})
+    turno_id = turno.id
+    turno.delete()
+
+    # return Response({
+    #     "mensaje": f"Turno atendido correctamente",
+    #     "turno": {
+    #         "id": turno.id,
+    #         "prioritario": turno.prioritario,
+    #         "general": turno.general,
+    #         "estado": turno.estado
+    #     }
+    # })
+
+    return Response({
+        "mensaje": f"Turno con id {turno_id} atendido y eliminado correctamente",
+        "turno_id": turno_id
+    })
 
 @api_view(['GET'])
 def solicitud_turnos(request):
@@ -92,3 +112,47 @@ def solicitud_turnos(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+@api_view(['POST'])
+def cancelar_turno(request):
+    # Validar token del usuario
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
+
+    token = auth_header.split(' ')[1]
+    payload = decodificar_jwt(token)
+
+    if not payload:
+        return Response({"error": "Token inválido o expirado"}, status=401)
+
+    usuario_id = payload.get("usuario_id")
+    if not usuario_id:
+        return Response({"error": "Token inválido"}, status=401)
+
+    try:
+        usuario = Usuario.objects.get(pk=usuario_id)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=404)
+
+    # Obtener el servicio desde el body
+    servicio = request.data.get("servicio")
+    if not servicio:
+        return Response({"error": "Debes indicar el parámetro 'servicio'"}, status=400)
+
+    Modelo = SERVICIOS.get(servicio.lower())
+    if not Modelo:
+        return Response({"error": "Servicio inválido"}, status=400)
+
+    # Buscar el turno pendiente del usuario en ese servicio
+    turno = Modelo.objects.filter(usuario=usuario, estado='Pendiente').first()
+
+    if not turno:
+        return Response({"error": "No tienes turnos pendientes en este servicio"}, status=404)
+
+    turno_id = turno.id
+    turno.delete()
+
+    return Response({
+        "mensaje": f"Turno cancelado correctamente en el servicio '{servicio}'",
+        "turno_id": turno_id
+    })
