@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.utils.html import escape
 from django.conf import settings
 from django_ratelimit.decorators import ratelimit
+import bcrypt
 #from rest_framework.decorators import permission_classes
 #from rest_framework.permissions import IsAuthenticated
 
