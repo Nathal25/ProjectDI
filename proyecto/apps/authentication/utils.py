@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
+import bcrypt
 
 def generar_jwt(usuario_id):
     payload = {
@@ -30,3 +31,18 @@ def get_datos_usuario(usuario_id):
         return serializer.data
     except Usuario.DoesNotExist:
         return None
+    
+def validar_token(request):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+
+    token = auth_header.split(' ')[1] 
+    payload = decodificar_jwt(token)
+    return payload
+
+def hash_password(password):
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')

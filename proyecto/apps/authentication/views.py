@@ -1,4 +1,4 @@
-from .utils import generar_jwt, decodificar_jwt, get_datos_usuario
+from .utils import generar_jwt, decodificar_jwt, get_datos_usuario, hash_password, validar_token
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Usuario
@@ -6,7 +6,7 @@ from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
 
-import bcrypt
+
 
 
 @api_view(['POST'])
@@ -20,10 +20,7 @@ def registrar_usuario_api(request):
             return Response({"message": f"Falta el campo: {campo}"}, status=400)
 
     # Hash de contraseña
-    password_bytes = data["password"].encode('utf-8')
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    data["password"] = hashed.decode('utf-8')
+    data["password"] = hash_password(data["password"])
 
     serializer = UsuarioSerializer(data=data)
     if serializer.is_valid():
@@ -64,12 +61,9 @@ def validar_password_usuario_api(request):
 
 @api_view(['GET'])  # Cambiamos a GET porque los tokens no se mandan por POST
 def validar_token_api(request):
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return Response({"message": "Token no proporcionado o mal formado"}, status=400)
-
-    token = auth_header.split(' ')[1]  # Obtenemos el token después de "Bearer"
-    payload = decodificar_jwt(token)
+    payload = validar_token(request)
+    if not payload:
+        return Response({"message": "Token inválido o no proporcionado"}, status=401)
 
     if payload:
         usuario_id = payload.get("usuario_id")
