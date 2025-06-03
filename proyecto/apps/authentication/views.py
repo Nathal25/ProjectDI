@@ -13,7 +13,7 @@ from django_ratelimit.decorators import ratelimit
 
 import bcrypt
 
-
+ 
 @api_view(['POST'])
 def registrar_usuario_api(request):
     data = request.data.copy()
@@ -58,7 +58,7 @@ def validar_password_usuario_api(request):
             status=429
         )
 
-    # ✅ Aquí se extraen las variables del cuerpo del request
+    # Aquí se extraen las variables del cuerpo del request
     cedula = request.data.get('cedula')
     password = request.data.get('password')
         
