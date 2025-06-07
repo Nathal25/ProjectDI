@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.consultant',
     'apps.services',
+    'apps.stats',
 ]
 
 MIDDLEWARE = [
