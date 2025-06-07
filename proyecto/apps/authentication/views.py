@@ -9,11 +9,6 @@ from django.utils.html import escape
 from django.conf import settings
 from django_ratelimit.decorators import ratelimit
 import bcrypt
-#from rest_framework.decorators import permission_classes
-#from rest_framework.permissions import IsAuthenticated
-
-
-
 
 @api_view(['POST'])
 def registrar_usuario_api(request):
@@ -56,7 +51,7 @@ def validar_password_usuario_api(request):
             status=429
         )
 
-    # ✅ Aquí se extraen las variables del cuerpo del request
+    # Aquí se extraen las variables del cuerpo del request
     cedula = request.data.get('cedula')
     password = request.data.get('password')
         

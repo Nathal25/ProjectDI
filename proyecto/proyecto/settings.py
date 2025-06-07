@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
+ 
 # Leer valores desde el .env
 DEBUG = config("DEBUG", default=False, cast=bool)
 SECRET_KEY = config("SECRET_KEY")
@@ -46,6 +46,8 @@ APPEND_SLASH = False
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'django_otp',
+    'django_otp.plugins.otp_totp', 
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.consultant',
     'apps.services',
+    'apps.stats',
 ]
 
 MIDDLEWARE = [
