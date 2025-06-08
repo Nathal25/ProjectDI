@@ -4,67 +4,59 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from apps.services.models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento
 from apps.authentication.models import Usuario
+from django.contrib.auth.decorators import login_required
+from .permissions import IsAdminRole
 
-@api_view(['GET'])
-def estadisticas_consulta_medica(request):
-    # Obtener consultas médicas y sus totales    
-    total_prioritario = ConsultaMedica.objects.filter(prioritario__isnull=False).count()
-    total_general = ConsultaMedica.objects.filter(general__isnull=False).count()
+SERVICIOS = {
+    'consulta': ConsultaMedica,
+    'medicamentos': ReclamarMedicamentos,
+    'asesoramiento': Asesoramiento,
+}
 
-    total = total_prioritario + total_general
-    
-    return Response({
-        "prioritario": {
-            "total": total_prioritario,
-            "porcentaje": round((total_prioritario / total * 100), 2) if total > 0 else 0
-        },
-        "general": {
-            "total": total_general,
-            "porcentaje": round((total_general / total * 100), 2) if total > 0 else 0
+@api_view(['GET', 'POST'])
+def estadisticas_servicios_generico(request):
+    # Soporta GET (params) o POST (body JSON)
+    if request.method == 'GET':
+        servicio = request.query_params.get('servicio')
+        tipo_turno = request.query_params.get('tipo')
+    else:
+        servicio = request.data.get('servicio')
+        tipo_turno = request.data.get('tipo')
+
+    if not servicio:
+        return Response({'error': 'Debe indicar el servicio.'}, status=400)
+    modelo = SERVICIOS.get(servicio.lower())
+    if not modelo:
+        return Response({'error': 'Servicio inválido.'}, status=400)
+
+    respuesta = {}
+    if tipo_turno == 'prioritario':
+        total_prioritario = modelo.objects.filter(prioritario__isnull=False).count()
+        respuesta['prioritario'] = {
+            'total': total_prioritario,
+            'porcentaje': 100.0
         }
-    })
-
-@api_view(['GET'])
-def estadisticas_reclamar_medicamentos(request):
-    reclamos = ReclamarMedicamentos.objects.all().values('prioritario', 'general')
-    
-    total_prioritario = reclamos.filter(prioritario__isnull=False).count()
-    total_general = reclamos.filter(general__isnull=False).count()
-    
-    total = total_prioritario + total_general
-    
-    return Response({
-        "prioritario": {
-            "total": total_prioritario,
-            "porcentaje": round((total_prioritario / total * 100), 2) if total > 0 else 0
-        },
-        "general": {
-            "total": total_general,
-            "porcentaje": round((total_general / total * 100), 2) if total > 0 else 0
+    elif tipo_turno == 'general':
+        total_general = modelo.objects.filter(general__isnull=False).count()
+        respuesta['general'] = {
+            'total': total_general,
+            'porcentaje': 100.0
         }
-    })
-
-@api_view(['GET'])
-def estadisticas_asesoramiento(request):
-    asesoramientos = Asesoramiento.objects.all().values('prioritario', 'general')
-    
-    total_prioritario = asesoramientos.filter(prioritario__isnull=False).count()
-    total_general = asesoramientos.filter(general__isnull=False).count()
-    
-    total = total_prioritario + total_general
-    
-    return Response({
-        "prioritario": {
-            "total": total_prioritario,
-            "porcentaje": round((total_prioritario / total * 100), 2) if total > 0 else 0
-        },
-        "general": {
-            "total": total_general,
-            "porcentaje": round((total_general / total * 100), 2) if total > 0 else 0
+    else:
+        total_prioritario = modelo.objects.filter(prioritario__isnull=False).count()
+        total_general = modelo.objects.filter(general__isnull=False).count()
+        total = total_prioritario + total_general
+        respuesta = {
+            'prioritario': {
+                'total': total_prioritario,
+                'porcentaje': round((total_prioritario / total * 100), 2) if total > 0 else 0
+            },
+            'general': {
+                'total': total_general,
+                'porcentaje': round((total_general / total * 100), 2) if total > 0 else 0
+            }
         }
-    })
-
-
+    return Response(respuesta)
 
 @api_view(['GET'])
 #@permission_classes([IsAuthenticated])
