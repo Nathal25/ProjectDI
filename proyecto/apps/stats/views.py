@@ -14,7 +14,6 @@ SERVICIOS = {
 }
 
 @api_view(['GET', 'POST'])
-#@permission_classes([IsAdminRole])
 def estadisticas_servicios_generico(request):
     # Soporta GET (params) o POST (body JSON)
     if request.method == 'GET':
