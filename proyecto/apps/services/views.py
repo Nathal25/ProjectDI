@@ -47,8 +47,14 @@ def pasar_turno(request):
     if not Modelo:
         return Response({"error": "Servicio inválido"}, status=400)
 
-    # Buscar el siguiente turno pendiente (prioritario > general)
-    turno = Modelo.objects.filter(estado='Pendiente').order_by(
+    # 1. Si hay un turno en estado 'Atendido', pasarlo a 'Pasado'
+    turno_atendido = Modelo.objects.filter(estado='Atendido').first()
+    if turno_atendido:
+        turno_atendido.estado = 'Pasado'
+        turno_atendido.save()
+    
+    # 2. Buscar siguiente turno 'Pendiente' (prioritario > general)
+    turno_pendiente = Modelo.objects.filter(estado='Pendiente').order_by(
         models.Case(
             models.When(prioritario__isnull=False, then=0),
             models.When(general__isnull=False, then=1),
@@ -58,41 +64,51 @@ def pasar_turno(request):
         'general'
     ).first()
 
-    if not turno:
+    if not turno_pendiente:
         return Response({"error": "No hay turnos pendientes"}, status=404)
+    
+    # 3. Cambiar ese turno a 'Atendido'
+    turno_pendiente.estado = 'Atendido'
+    turno_pendiente.save()
 
-    turno.estado = 'Atendido'
-    turno.save()
-    turno_id = turno.id
-    turno.delete()
-
-    # return Response({
-    #     "mensaje": f"Turno atendido correctamente",
-    #     "turno": {
-    #         "id": turno.id,
-    #         "prioritario": turno.prioritario,
-    #         "general": turno.general,
-    #         "estado": turno.estado
-    #     }
-    # })
+    tipo = "prioritario" if turno_pendiente.prioritario is not None else "general"
+    numero = turno_pendiente.prioritario if tipo == "prioritario" else turno_pendiente.general
 
     return Response({
-        "mensaje": f"Turno con id {turno_id} atendido y eliminado correctamente",
-        "turno_id": turno_id
+        "mensaje": f"Turno {tipo} {numero} actualizado a 'Atendido'",
+        "turno_id": turno_pendiente.id,
+        "tipo": tipo,
+        "numero": numero
     })
+    
 
 @api_view(['GET'])
 def solicitud_turnos(request):
-    id_usuario = request.query_params.get("id")
-    servicio = request.query_params.get("service")
+    #validar el ingreso como paciente 
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
 
-    if not id_usuario or not servicio:
-        return Response({"error": "Faltan parámetros"}, status=400)
+    token = auth_header.split(' ')[1]
+    payload = decodificar_jwt(token)
+
+    if not payload:
+        return Response({"error": "Token inválido o expirado"}, status=401)
+
+    usuario_id = payload.get("usuario_id")
+    if not usuario_id:
+        return Response({"error": "Token inválido"}, status=401)
 
     try:
-        usuario = Usuario.objects.get(pk=id_usuario)
+        usuario = Usuario.objects.get(pk=usuario_id)
     except Usuario.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)
+    
+
+    servicio = request.query_params.get("service")
+
+    if not servicio:
+        return Response({"error": "Faltan parámetros"}, status=400)
 
     modelo_servicio = SERVICIOS.get(servicio.lower())
     if not modelo_servicio:
@@ -155,4 +171,37 @@ def cancelar_turno(request):
     return Response({
         "mensaje": f"Turno cancelado correctamente en el servicio '{servicio}'",
         "turno_id": turno_id
+    })
+
+@api_view(['GET'])
+def visualizar_turnos(request):
+    servicio = request.query_params.get("servicio")
+    if not servicio:
+        return Response({"error": "Debes enviar el parámetro 'servicio'"}, status=400)
+
+    Modelo = SERVICIOS.get(servicio.lower())
+    if not Modelo:
+        return Response({"error": "Servicio inválido"}, status=400)
+
+    # Turno actual
+    turno_actual = Modelo.objects.filter(estado='Atendido').first()
+
+    # Turnos pasados (últimos 4)
+    turnos_pasados = Modelo.objects.filter(estado='Pasado').order_by('-id')[:4]
+
+    # Formatear resultados
+    def formatear_turno(turno):
+        if turno is None:
+            return None
+        tipo = "prioritario" if turno.prioritario is not None else "general"
+        numero = turno.prioritario if tipo == "prioritario" else turno.general
+        return {
+            "id": turno.id,
+            "tipo": tipo,
+            "numero": numero
+        }
+
+    return Response({
+        "turno_actual": formatear_turno(turno_actual),
+        "ultimos_turnos": [formatear_turno(t) for t in turnos_pasados]
     })
