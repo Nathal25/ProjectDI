@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,24 +20,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
+ 
+# Leer valores desde el .env
+DEBUG = config("DEBUG", default=False, cast=bool)
+SECRET_KEY = config("SECRET_KEY")
+#Implementación de la seguridad
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=False, cast=bool)
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=False, cast=bool)
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-sccf02(f&5)s%-m7bh!f%z9$-2@oze-&mhyfaf-5lo)cl-*^5#'
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+LOGIN_RATE_LIMIT = '5/m' #maxsimo 5 intentos de inicio de sesión por minuto
+LOGIN_FAILS_LIMIT = 5   # máximo 5 intentos fallidos de inicio de sesión
+LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
+
 
 ALLOWED_HOSTS = []
 
 APPEND_SLASH = False
-
-
 
 # Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'django_otp',
+    'django_otp.plugins.otp_totp', 
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -45,6 +56,7 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.consultant',
     'apps.services',
+    'apps.stats',
 ]
 
 MIDDLEWARE = [
@@ -84,10 +96,10 @@ WSGI_APPLICATION = 'proyecto.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'proyecto_desarrollo_1',
-        'USER': 'proyecto_desarrollo_1_user',
-        'PASSWORD': 'GUjNW6IElJGfIt32rN0c9OTsdQreWyhC',
-        'HOST': 'dpg-cvm8krvgi27c7399sgp0-a.oregon-postgres.render.com',
+        'NAME': 'proyectod1_gohj',
+        'USER': 'proyectod1_gohj_user',
+        'PASSWORD': '3Bpsl7RsmBQXtIwzA6E585asJo350BGx',
+        'HOST': 'dpg-d0v358u3jp1c73do855g-a.oregon-postgres.render.com',
         'PORT': '5432',  # El puerto por defecto de PostgreSQL
     }
 }
@@ -108,6 +120,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+]
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
 ]
 
 
