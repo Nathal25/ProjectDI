@@ -15,8 +15,10 @@ SERVICIOS = {
 
 # 1. Estadísticas de servicios genéricos
 # Esta vista permite obtener estadísticas de un servicio específico (consulta, medicamentos, asesoramiento)
+@permission_classes([IsAdminRole])
 @api_view(['GET', 'POST'])
 def estadisticas_servicios_generico(request):
+    
     # Soporta GET (params) o POST (body JSON)
     if request.method == 'GET':
         servicio = request.query_params.get('servicio')
@@ -65,6 +67,7 @@ def estadisticas_servicios_generico(request):
 
 # 2. Estadísticas de solicitudes de servicios
 # Esta vista devuelve estadísticas de las solicitudes de servicios por usuario.
+@permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_solicitud_servicios(request):
     # Obtener usuarios con sus solicitudes totales
@@ -91,6 +94,7 @@ def estadisticas_solicitud_servicios(request):
 # Esta vista devuelve estadísticas de los tipos de servicio (prioritario y general) 
 # para cada modelo de servicio.
 # Se agregan los totales y porcentajes de cada tipo de servicio.
+@permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_tipos_servicio(request):
     total_prioritario = 0
@@ -121,6 +125,7 @@ def estadisticas_tipos_servicio(request):
 # 4. Rendimiento general del punto de atención
 # Esta vista devuelve estadísticas del rendimiento de cada punto de atención,
 # incluyendo el total de turnos, turnos atendidos, y la cantidad de turnos prioritarios y generales.
+@permission_classes([IsAdminRole])
 @api_view(['GET'])
 #@permission_classes([IsAdminUser])
 def rendimiento_punto_atencion(request):
