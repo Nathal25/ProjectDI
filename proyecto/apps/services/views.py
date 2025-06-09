@@ -115,6 +115,20 @@ def solicitud_turnos(request):
         return Response({"error": "Servicio inválido"}, status=400)
 
     try:
+        # Verificar si ya tiene un turno pendiente en ese servicio
+        turno_existente = modelo_servicio.objects.filter(usuario=usuario, estado='Pendiente').first()
+        if turno_existente:
+            tipo = "prioritario" if turno_existente.prioritario is not None else "general"
+            numero = turno_existente.prioritario if tipo == "prioritario" else turno_existente.general
+            return Response({
+                "mensaje": "Ya tienes un turno pendiente",
+                "turno": {
+                    "id": turno_existente.id,
+                    "tipo": tipo,
+                    "numero": numero
+                }
+            }, status=200)
+        
         with transaction.atomic():
             punto = usuario.puntoAtencion
             if usuario.discapacidad:
