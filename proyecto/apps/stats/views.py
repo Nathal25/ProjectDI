@@ -13,6 +13,8 @@ SERVICIOS = {
     'asesoramiento': Asesoramiento,
 }
 
+# 1. Estadísticas de servicios genéricos
+# Esta vista permite obtener estadísticas de un servicio específico (consulta, medicamentos, asesoramiento)
 @api_view(['GET', 'POST'])
 def estadisticas_servicios_generico(request):
     # Soporta GET (params) o POST (body JSON)
@@ -33,12 +35,14 @@ def estadisticas_servicios_generico(request):
     if tipo_turno == 'prioritario':
         total_prioritario = modelo.objects.filter(prioritario__isnull=False).count()
         respuesta['prioritario'] = {
+            'servicio': servicio,
             'total': total_prioritario,
             'porcentaje': 100.0
         }
     elif tipo_turno == 'general':
         total_general = modelo.objects.filter(general__isnull=False).count()
         respuesta['general'] = {
+            'servicio': servicio,
             'total': total_general,
             'porcentaje': 100.0
         }
@@ -47,6 +51,7 @@ def estadisticas_servicios_generico(request):
         total_general = modelo.objects.filter(general__isnull=False).count()
         total = total_prioritario + total_general
         respuesta = {
+            'servicio': servicio,
             'prioritario': {
                 'total': total_prioritario,
                 'porcentaje': round((total_prioritario / total * 100), 2) if total > 0 else 0
@@ -58,8 +63,9 @@ def estadisticas_servicios_generico(request):
         }
     return Response(respuesta)
 
+# 2. Estadísticas de solicitudes de servicios
+# Esta vista devuelve estadísticas de las solicitudes de servicios por usuario.
 @api_view(['GET'])
-#@permission_classes([IsAuthenticated])
 def estadisticas_solicitud_servicios(request):
     # Obtener usuarios con sus solicitudes totales
     usuarios = Usuario.objects.annotate(
@@ -81,8 +87,11 @@ def estadisticas_solicitud_servicios(request):
     
     return Response(data)
 
+# 3. Estadísticas de tipos de servicio
+# Esta vista devuelve estadísticas de los tipos de servicio (prioritario y general) 
+# para cada modelo de servicio.
+# Se agregan los totales y porcentajes de cada tipo de servicio.
 @api_view(['GET'])
-#@permission_classes([IsAdminUser])
 def estadisticas_tipos_servicio(request):
     total_prioritario = 0
     total_general = 0
@@ -110,6 +119,8 @@ def estadisticas_tipos_servicio(request):
     })
 
 # 4. Rendimiento general del punto de atención
+# Esta vista devuelve estadísticas del rendimiento de cada punto de atención,
+# incluyendo el total de turnos, turnos atendidos, y la cantidad de turnos prioritarios y generales.
 @api_view(['GET'])
 #@permission_classes([IsAdminUser])
 def rendimiento_punto_atencion(request):
