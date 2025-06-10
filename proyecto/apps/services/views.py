@@ -7,6 +7,8 @@ from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from apps.authentication.views import decodificar_jwt, get_datos_usuario
 from django.core.cache import cache
+
+#tipos de servicios
 SERVICIOS = {
     "consulta": ConsultaMedica,
     "medicamentos": ReclamarMedicamentos,
@@ -33,7 +35,7 @@ def pasar_turno(request):
     try:
         usuario = Usuario.objects.get(pk=usuario_id)
     except Usuario.DoesNotExist:
-        return Response({"error": "Usuario no encontrado"}, status=404)
+        return Response({"error": "Usuario no encontrado en base de datos"}, status=404)
 
     if usuario.rol != 'asesor':
         return Response({"error": "No tienes permiso para modificar turnos"}, status=403)
