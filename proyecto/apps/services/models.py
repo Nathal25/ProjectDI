@@ -53,6 +53,7 @@ def asignar_turnos(sender, instance, **kwargs):
         if not instance.punto_atencion:
             instance.punto_atencion = instance.usuario.puntoAtencion
 
+
         if not instance.prioritario and not instance.general:
             if instance.usuario.discapacidad or instance.usuario.embarazo:
                 instance.prioritario = obtener_siguiente_turno(sender, "prioritario")
