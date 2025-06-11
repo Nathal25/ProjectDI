@@ -20,11 +20,11 @@ SERVICIOS = {
 @permission_classes([IsAdminRole])
 @api_view(['GET', 'POST'])
 def estadisticas_servicios_generico(request):
-    usuario_admin = get_usuario_admin(request)
+    usuario_admin = get_punto_atencion_admin(request)
     if IsAdminRole().has_permission(request, None) is False:
         return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
     
-    punto_atencion = usuario_admin.puntoAtencion
+    punto_atencion = PuntoAtencionPermission
     filtro = {'usuario__puntoAtencion': punto_atencion}
 
     # Soporta GET (params) o POST (body JSON)
@@ -80,7 +80,7 @@ def estadisticas_servicios_generico(request):
 @permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_solicitud_servicios(request):
-    usuario_admin = get_usuario_admin(request)
+    usuario_admin = get_punto_atencion_admin(request)
 
     if IsAdminRole().has_permission(request, None) is False:
         return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
@@ -113,7 +113,7 @@ def estadisticas_solicitud_servicios(request):
 @permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_tipos_servicio(request):
-    usuario_admin = get_usuario_admin(request)
+    usuario_admin = get_punto_atencion_admin(request)
     if IsAdminRole().has_permission(request, None) is False:
         return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
     punto_atencion = usuario_admin.puntoAtencion
@@ -178,7 +178,7 @@ def rendimiento_punto_atencion(request):
     return Response(resultado)
 
 #Función auxiliar para obtener el punto de atención del usuario administrador
-def get_usuario_admin(request):
+def get_punto_atencion_admin(request):
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         return None

@@ -87,17 +87,20 @@ def validar_token_api(request):
         return Response({"message": "Token inválido o expirado"}, status=401)
 
 @api_view(['POST'])
-#@permission_classes([isAuthenticated])
 def cambiar_punto_atencion(request):
-    id_usuario = request.query_params.get("id")  # <- viene por parámetro
-    punto_atencion = request.data.get("punto_atencion")  # <- este sí viene en el body
-
-    if not id_usuario or not punto_atencion:
-        return Response({"message": "Faltan datos: id o punto de atención"}, status=400)
-
+    # Extraer y validar token
+    payload = validar_token(request)
+    if not payload:
+        return Response({"message": "Token inválido o no proporcionado"}, status=401)
+    
+    id_usuario = payload.get("usuario_id")  # Extraer el id del payload del token
+    punto_atencion = request.data.get("punto_atencion")
+    
+    if not punto_atencion:
+        return Response({"message": "Falta el punto de atención"}, status=400)
+    
     try:
         usuario = Usuario.objects.get(pk=id_usuario)
-        # Escapar el punto de atención para evitar inyecciones XSS
         usuario.puntoAtencion = escape(punto_atencion)
         usuario.save()
         return Response({"message": "Punto de atención actualizado"}, status=200)
@@ -105,4 +108,5 @@ def cambiar_punto_atencion(request):
         return Response({"message": "Usuario no encontrado"}, status=404)
     except Exception as e:
         return Response({"message": "Error al actualizar el punto de atención", "error": str(e)}, status=500)
+
 
