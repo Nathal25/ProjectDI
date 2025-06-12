@@ -37,8 +37,6 @@ LOGIN_FAILS_LIMIT = 5   # máximo 5 intentos fallidos de inicio de sesión
 LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
 
 
-ALLOWED_HOSTS = []
-
 APPEND_SLASH = False
 
 # Application definition
@@ -48,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django_otp',
     'django_otp.plugins.otp_totp', 
+    'corsheaders',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -61,15 +60,32 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Middleware para CORS
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # Middleware para OTP
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_CREDENTIALS = True  # Permitir credenciales (cookies, autenticación HTTP, etc.)
+# Permitir encabezados específicos en las solicitudes CORS
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "Content-type",
+    "x-csrftoken",
+    "accept",
+    "origin",
+    "user-agent",
+]
 
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 ROOT_URLCONF = 'proyecto.urls'
 
