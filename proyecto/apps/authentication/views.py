@@ -51,7 +51,7 @@ def registrar_usuario_api(request):
         usuario.save()  # Guardar el usuario con el TOTP generado
         # Generar QR para Google Authenticator
         totp = pyotp.TOTP(usuario.totp_secret)
-        uri = totp.provisioning_uri(name=usuario.correo, issuer_name="TuApp")
+        uri = totp.provisioning_uri(name=usuario.correo, issuer_name="SAMU")
         qr = qrcode.make(uri)
         buffer = BytesIO()
         qr.save(buffer, format="PNG")
