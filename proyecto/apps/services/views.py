@@ -221,3 +221,46 @@ def visualizar_turnos(request):
         "turno_actual": formatear_turno(turno_actual),
         "ultimos_turnos": [formatear_turno(t) for t in turnos_pasados]
     })
+
+@api_view(['GET'])
+def turno_pendiente(request):
+    # Validar token del usuario
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
+
+    token = auth_header.split(' ')[1]
+    payload = decodificar_jwt(token)
+
+    if not payload:
+        return Response({"error": "Token inválido o expirado"}, status=401)
+
+    usuario_id = payload.get("usuario_id")
+    if not usuario_id:
+        return Response({"error": "Token inválido"}, status=401)
+
+    try:
+        usuario = Usuario.objects.get(pk=usuario_id)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=404)
+
+     # Recorrer todos los modelos de servicios
+    turnos_pendientes = {}
+    for nombre_servicio, Modelo in SERVICIOS.items():
+        turno = Modelo.objects.filter(usuario=usuario, estado='Pendiente').first()
+        if turno:
+            tipo = "prioritario" if turno.prioritario is not None else "general"
+            numero = turno.prioritario if tipo == "prioritario" else turno.general
+            turnos_pendientes[nombre_servicio] = {
+                "id": turno.id,
+                "turno": numero,
+                "tipo": tipo
+            }
+
+    if not turnos_pendientes:
+        return Response({"mensaje": "El usuario no tiene turnos pendientes en ningún servicio."})
+
+    return Response({
+        "mensaje": f"Usuario con turnos pendientes en los siguientes servicios: ",
+        "turnos": turnos_pendientes
+    })
