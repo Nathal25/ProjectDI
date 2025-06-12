@@ -24,7 +24,7 @@ def estadisticas_servicios_generico(request):
     if IsAdminRole().has_permission(request, None) is False:
         return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
     
-    punto_atencion = PuntoAtencionPermission
+    punto_atencion = usuario_admin.puntoAtencion
     filtro = {'usuario__puntoAtencion': punto_atencion}
 
     # Soporta GET (params) o POST (body JSON)

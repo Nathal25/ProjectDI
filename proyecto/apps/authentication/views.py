@@ -9,6 +9,12 @@ from django.utils.html import escape
 from django.conf import settings
 from django_ratelimit.decorators import ratelimit
 import bcrypt
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
+from django.utils import timezone
+from datetime import timedelta
 
 @api_view(['POST'])
 def registrar_usuario_api(request):
@@ -36,11 +42,29 @@ def registrar_usuario_api(request):
         if Usuario.objects.filter(celular=data["celular"]).exists():
             return Response({"message": "El celular ya esta registrado"}, status=400)
         
+        
         usuario = serializer.save() 
+        # Generar TOTP automáticamente al registrar
+        usuario.totp_secret = pyotp.random_base32()
+        usuario.totp_confirmed = True  
 
-        return Response({"message": "Registro exitoso"}, status=201)
+        usuario.save()  # Guardar el usuario con el TOTP generado
+        # Generar QR para Google Authenticator
+        totp = pyotp.TOTP(usuario.totp_secret)
+        uri = totp.provisioning_uri(name=usuario.correo, issuer_name="TuApp")
+        qr = qrcode.make(uri)
+        buffer = BytesIO()
+        qr.save(buffer, format="PNG")
+        qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        return Response({
+            "message": "Registro exitoso",
+            "qr": qr_base64,
+            "secret": usuario.totp_secret
+        }, status=201)
     
     return Response(serializer.errors, status=400)
+
 
 @ratelimit(key='post:cedula', rate=settings.LOGIN_RATE_LIMIT, method='POST', block=False)
 @api_view(['POST'])
@@ -51,27 +75,47 @@ def validar_password_usuario_api(request):
             status=429
         )
 
-    # Aquí se extraen las variables del cuerpo del request
     cedula = request.data.get('cedula')
     password = request.data.get('password')
-        
-    if not cedula or not password:
-        return Response({"message": "Faltan la cédula o la contraseña"}, status=400)
+    totp_code = request.data.get('totp')
+
+    if not cedula or not password or not totp_code:
+        return Response({"message": "Faltan la cédula, la contraseña o el código TOTP"}, status=400)
 
     try:
         usuario = Usuario.objects.get(cedula=cedula)
     except Usuario.DoesNotExist:
         return Response({"message": "Usuario no encontrado"}, status=404)
 
-    # Verificación directa desde Usuario
+    # Verificación de bloqueo por intentos fallidos de TOTP
+    if usuario.totp_locked_until and usuario.totp_locked_until > timezone.now():
+        return Response(
+            {"message": "Cuenta bloqueada por intentos fallidos. Intenta más tarde."},
+            status=403
+        )
+
+    # Verificación de contraseña
     password_bytes = password.encode('utf-8')
     stored_hash = usuario.password.encode('utf-8')
-    
-    if bcrypt.checkpw(password_bytes, stored_hash):
-        return Response(generar_jwt(usuario.id), status=200)
-    else:
+    if not bcrypt.checkpw(password_bytes, stored_hash):
         return Response({"message": "Contraseña incorrecta"}, status=401)
 
+    # Verificación TOTP
+    totp = pyotp.TOTP(usuario.totp_secret)
+    if not totp.verify(totp_code):
+        usuario.totp_failed_attempts += 1
+        if usuario.totp_failed_attempts >= 3:
+            usuario.totp_locked_until = timezone.now() + timedelta(minutes=3)
+        usuario.save()
+        return Response({"message": "Código TOTP inválido"}, status=401)
+    else:
+        # Reiniciar contador de intentos y desbloquear al acertar
+        usuario.totp_failed_attempts = 0
+        usuario.totp_locked_until = None
+        usuario.save()
+
+    # Todo correcto: generar y devolver el JWT
+    return Response(generar_jwt(usuario.id), status=200)
 
 @api_view(['GET'])  # Cambiamos a GET porque los tokens no se mandan por POST
 def validar_token_api(request):
@@ -109,4 +153,21 @@ def cambiar_punto_atencion(request):
     except Exception as e:
         return Response({"message": "Error al actualizar el punto de atención", "error": str(e)}, status=500)
 
+
+@api_view(['POST'])
+def verificar_totp(request):
+    cedula = request.data.get('cedula')
+    code = request.data.get('code')
+
+    if not cedula or not code:
+        return Response({"message": "Faltan la cédula o el código"}, status=400)
+
+    try:
+        usuario = Usuario.objects.get(cedula=cedula)
+        usuario.totp_secret= code
+        usuario.totp_confirmed = True
+        usuario.save()
+        return Response({"message": "TOTP activado exitosamente"})
+    except Usuario.DoesNotExist:
+        return Response({"message": "Usuario no encontrado"}, status=404)
 

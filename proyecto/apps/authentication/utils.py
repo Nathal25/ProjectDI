@@ -5,6 +5,7 @@ from .models import Usuario
 from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 import bcrypt
+import pyotp # Para autenticación de dos factores (opcional)
 
 def generar_jwt(usuario_id):
     payload = {
