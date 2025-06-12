@@ -36,8 +36,12 @@ LOGIN_RATE_LIMIT = '5/m' #maxsimo 5 intentos de inicio de sesión por minuto
 LOGIN_FAILS_LIMIT = 5   # máximo 5 intentos fallidos de inicio de sesión
 LOGIN_FAILS_TIMEOUT = 300  # 5 minutes
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
 
 APPEND_SLASH = False
 
@@ -48,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django_otp',
     'django_otp.plugins.otp_totp', 
+    'corsheaders',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -62,6 +67,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Middleware para CORS
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
