@@ -2,6 +2,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario
+from apps.authentication.utils import validar_token
 from django.db import transaction, models
 from django.db.models import Max
 from django.shortcuts import get_object_or_404
@@ -17,13 +18,7 @@ SERVICIOS = {
 
 @api_view(['POST'])
 def pasar_turno(request):
-    # Validar token y rol de asesor
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
-
-    token = auth_header.split(' ')[1]
-    payload = decodificar_jwt(token)
+    payload = validar_token(request)
 
     if not payload:
         return Response({"error": "Token inválido o expirado"}, status=401)
@@ -86,14 +81,7 @@ def pasar_turno(request):
 
 @api_view(['GET'])
 def solicitud_turnos(request):
-    #validar el ingreso como paciente 
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
-
-    token = auth_header.split(' ')[1]
-    payload = decodificar_jwt(token)
-
+    payload = validar_token(request)
     if not payload:
         return Response({"error": "Token inválido o expirado"}, status=401)
 
@@ -146,13 +134,8 @@ def solicitud_turnos(request):
 
 @api_view(['POST'])
 def cancelar_turno(request):
-    # Validar token del usuario
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
-
-    token = auth_header.split(' ')[1]
-    payload = decodificar_jwt(token)
+   #validar token
+    payload = validar_token(request)
 
     if not payload:
         return Response({"error": "Token inválido o expirado"}, status=401)
@@ -225,12 +208,7 @@ def visualizar_turnos(request):
 @api_view(['GET'])
 def turno_pendiente(request):
     # Validar token del usuario
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return Response({"error": "Token no proporcionado o mal formado"}, status=400)
-
-    token = auth_header.split(' ')[1]
-    payload = decodificar_jwt(token)
+    payload = validar_token(request)
 
     if not payload:
         return Response({"error": "Token inválido o expirado"}, status=401)
