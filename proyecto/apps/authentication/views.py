@@ -15,6 +15,9 @@ from io import BytesIO
 import base64
 from django.utils import timezone
 from datetime import timedelta
+import uuid
+
+TEMP_TOKENS = {}
 
 @api_view(['POST'])
 def registrar_usuario_api(request):
@@ -70,49 +73,26 @@ def registrar_usuario_api(request):
 @api_view(['POST'])
 def validar_password_usuario_api(request):
     if getattr(request, 'limited', False):
-        return Response(
-            {"message": "Demasiados intentos. Intenta de nuevo más tarde."},
-            status=429
+        # Si se ha alcanzado el límite de intentos, devolver un mensaje de error
+        return Response({"message": "Demasiados intentos. Intenta de nuevo más tarde."},status=429
         )
 
     cedula = request.data.get('cedula')
     password = request.data.get('password')
-    totp_code = request.data.get('totp')
 
-    if not cedula or not password or not totp_code:
-        return Response({"message": "Faltan la cédula, la contraseña o el código TOTP"}, status=400)
+    if not cedula or not password:
+        return Response({"message": "Faltan la cédula o la contraseña"}, status=400)
 
     try:
         usuario = Usuario.objects.get(cedula=cedula)
     except Usuario.DoesNotExist:
         return Response({"message": "Usuario no encontrado"}, status=404)
 
-    # Verificación de bloqueo por intentos fallidos de TOTP
-    if usuario.totp_locked_until and usuario.totp_locked_until > timezone.now():
-        return Response(
-            {"message": "Cuenta bloqueada por intentos fallidos. Intenta más tarde."},
-            status=403
-        )
-
     # Verificación de contraseña
     password_bytes = password.encode('utf-8')
     stored_hash = usuario.password.encode('utf-8')
     if not bcrypt.checkpw(password_bytes, stored_hash):
         return Response({"message": "Contraseña incorrecta"}, status=401)
-
-    # Verificación TOTP
-    totp = pyotp.TOTP(usuario.totp_secret)
-    if not totp.verify(totp_code):
-        usuario.totp_failed_attempts += 1
-        if usuario.totp_failed_attempts >= 3:
-            usuario.totp_locked_until = timezone.now() + timedelta(minutes=3)
-        usuario.save()
-        return Response({"message": "Código TOTP inválido"}, status=401)
-    else:
-        # Reiniciar contador de intentos y desbloquear al acertar
-        usuario.totp_failed_attempts = 0
-        usuario.totp_locked_until = None
-        usuario.save()
 
     # Todo correcto: generar y devolver el JWT
     return Response(generar_jwt(usuario.id), status=200)
@@ -153,21 +133,63 @@ def cambiar_punto_atencion(request):
     except Exception as e:
         return Response({"message": "Error al actualizar el punto de atención", "error": str(e)}, status=500)
 
-
+# This endpoint is used to verify the identity of the user using TOTP
+# It checks the user's cedula and TOTP code, and if successful, 
+# generates a temporary token for password restoration.
 @api_view(['POST'])
-def verificar_totp(request):
+def verify_identity(request):
     cedula = request.data.get('cedula')
-    code = request.data.get('code')
+    totp_code = request.data.get('totp')
 
-    if not cedula or not code:
-        return Response({"message": "Faltan la cédula o el código"}, status=400)
+    if not cedula or not totp_code:
+        return Response({"message": "Cédula y TOTP son obligatorios"}, status=400)
 
-    try:
-        usuario = Usuario.objects.get(cedula=cedula)
-        usuario.totp_secret= code
-        usuario.totp_confirmed = True
-        usuario.save()
-        return Response({"message": "TOTP activado exitosamente"})
-    except Usuario.DoesNotExist:
+    usuario = Usuario.objects.filter(cedula=cedula).first()
+    if not usuario:
         return Response({"message": "Usuario no encontrado"}, status=404)
+
+    # Verifica bloqueo por intentos fallidos
+    if usuario.totp_locked_until and usuario.totp_locked_until > timezone.now():
+        return Response({"message": "Demasiados intentos fallidos. Intente más tarde."}, status=403)
+
+    totp = pyotp.TOTP(usuario.totp_secret)
+    if not totp.verify(totp_code):
+        usuario.totp_failed_attempts += 1
+        if usuario.totp_failed_attempts >= 3:
+            usuario.totp_locked_until = timezone.now() + timedelta(minutes=3)
+        usuario.save()
+        return Response({"message": "Código TOTP inválido"}, status=401)
+
+    # Si todo está bien, genera token temporal
+    temp_token = str(uuid.uuid4())
+    TEMP_TOKENS[temp_token] = {'cedula': cedula, 'expires': timezone.now() + timedelta(minutes=10)}
+    usuario.totp_failed_attempts = 0
+    usuario.totp_locked_until = None
+    usuario.save()
+    return Response({"temp_token": temp_token, "message": "Identidad verificada. Ahora ingrese la nueva contraseña."})
+
+# This endpoint is used to restore the password using a temporary token
+# It checks the temporary token and updates the user's password if valid.
+@api_view(['POST'])
+def restore_password(request):
+    temp_token = request.data.get('temp_token')
+    new_password = request.data.get('new_password')
+
+    if not temp_token or not new_password:
+        return Response({"message": "Token temporal y nueva contraseña son obligatorios"}, status=400)
+
+    token_data = TEMP_TOKENS.get(temp_token)
+    if not token_data or token_data['expires'] < timezone.now():
+        return Response({"message": "Token inválido o expirado"}, status=401)
+
+    usuario = Usuario.objects.filter(cedula=token_data['cedula']).first()
+    if not usuario:
+        return Response({"message": "Usuario no encontrado"}, status=404)
+
+    usuario.password = hash_password(new_password)
+    usuario.save()
+    # Elimina el token temporal
+    del TEMP_TOKENS[temp_token]
+    return Response({"message": "Contraseña actualizada exitosamente"})
+    
 
