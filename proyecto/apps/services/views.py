@@ -44,14 +44,15 @@ def pasar_turno(request):
     if not Modelo:
         return Response({"error": "Servicio inválido"}, status=400)
 
+    punto = usuario.puntoAtencion
     # 1. Si hay un turno en estado 'Atendido', pasarlo a 'Pasado'
-    turno_atendido = Modelo.objects.filter(estado='Atendido').first()
+    turno_atendido = Modelo.objects.filter(estado='Atendido', punto_atencion=punto).first()
     if turno_atendido:
         turno_atendido.estado = 'Pasado'
         turno_atendido.save()
     
     # 2. Buscar siguiente turno 'Pendiente' (prioritario > general)
-    turno_pendiente = Modelo.objects.filter(estado='Pendiente').order_by(
+    turno_pendiente = Modelo.objects.filter(estado='Pendiente', punto_atencion=punto).order_by(
         models.Case(
             models.When(prioritario__isnull=False, then=0),
             models.When(general__isnull=False, then=1),
@@ -75,7 +76,8 @@ def pasar_turno(request):
         "mensaje": f"Turno {tipo} {numero} actualizado a 'Atendido'",
         "turno_id": turno_pendiente.id,
         "tipo": tipo,
-        "numero": numero
+        "numero": numero,
+        "punto": punto
     })
     
 
@@ -175,18 +177,21 @@ def cancelar_turno(request):
 @api_view(['GET'])
 def visualizar_turnos(request):
     servicio = request.query_params.get("servicio")
+    punto_atencion = request.query_params.get("puntoAtencion")
     if not servicio:
         return Response({"error": "Debes enviar el parámetro 'servicio'"}, status=400)
 
+    if not punto_atencion:
+        return Response({"error": "Debes enviar el parámetro 'puntoAtencion'"}, status=400)
     Modelo = SERVICIOS.get(servicio.lower())
     if not Modelo:
         return Response({"error": "Servicio inválido"}, status=400)
 
     # Turno actual
-    turno_actual = Modelo.objects.filter(estado='Atendido').first()
+    turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
 
     # Turnos pasados (últimos 4)
-    turnos_pasados = Modelo.objects.filter(estado='Pasado').order_by('-id')[:4]
+    turnos_pasados = Modelo.objects.filter(estado='Pasado', punto_atencion=punto_atencion).order_by('-id')[:4]
 
     # Formatear resultados
     def formatear_turno(turno):
