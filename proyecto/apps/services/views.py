@@ -202,7 +202,8 @@ def visualizar_turnos(request):
         return {
             "id": turno.id,
             "tipo": tipo,
-            "numero": numero
+            "numero": numero,
+            "punto": punto_atencion
         }
 
     return Response({
