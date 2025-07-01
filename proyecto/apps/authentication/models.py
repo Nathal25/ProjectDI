@@ -36,7 +36,10 @@ class Usuario(models.Model):
     rol = models.CharField(max_length=50, choices=ROLES, default='paciente')  # Cambié 'user' por 'paciente' ya que 'user' no está en choices
     discapacidad = models.CharField(max_length=50, choices=CONDICIONESPRIORITARIAS, null=True,default=None)
     password = models.CharField(max_length=128, null=True, blank=True)  # Agregado para almacenar la contraseña del usuario
-    
+    # Campos para manejo de seguridad
+    failed_login_attempts = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    # Campos para TOTP
     totp_secret = models.CharField(max_length=32, blank=True, null=True)
     totp_confirmed = models.BooleanField(default=False)
     totp_failed_attempts = models.PositiveIntegerField(default=0)

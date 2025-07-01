@@ -69,14 +69,10 @@ def registrar_usuario_api(request):
     return Response(serializer.errors, status=400)
 
 
-@ratelimit(key='post:cedula', rate=settings.LOGIN_RATE_LIMIT, method='POST', block=False)
+#@ratelimit(key='post:cedula', rate=settings.LOGIN_RATE_LIMIT, method='POST', block=False)
 @api_view(['POST'])
 def validar_password_usuario_api(request):
-    if getattr(request, 'limited', False):
-        # Si se ha alcanzado el límite de intentos, devolver un mensaje de error
-        return Response({"message": "Demasiados intentos. Intenta de nuevo más tarde."},status=429
-        )
-
+    
     cedula = request.data.get('cedula')
     password = request.data.get('password')
 
@@ -87,13 +83,35 @@ def validar_password_usuario_api(request):
         usuario = Usuario.objects.get(cedula=cedula)
     except Usuario.DoesNotExist:
         return Response({"message": "Usuario no encontrado"}, status=404)
-
+    
+    # Verificar si el usuario está bloqueado
+    if usuario.locked_until and usuario.locked_until > timezone.now():
+        tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
+        return Response({
+            'message': f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
+        }, status=423)
     # Verificación de contraseña
+    # Verificar contraseña
     password_bytes = password.encode('utf-8')
     stored_hash = usuario.password.encode('utf-8')
     if not bcrypt.checkpw(password_bytes, stored_hash):
-        return Response({"message": "Contraseña incorrecta"}, status=401)
-
+        usuario.failed_login_attempts += 1
+        intentos_restantes = settings.LOGIN_FAILS_LIMIT - usuario.failed_login_attempts
+        if usuario.failed_login_attempts >= settings.LOGIN_FAILS_LIMIT:
+            usuario.locked_until = timezone.now() + timedelta(seconds=settings.LOGIN_FAILS_TIMEOUT)
+            usuario.save()
+            return Response({
+                'message': 'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo más tarde.'
+            }, status=423)
+        usuario.save()
+        return Response({
+            'message': 'Contraseña incorrecta.',
+            'intentos_restantes': max(0, intentos_restantes)
+        }, status=401)
+    # Reiniciar contadores de intentos fallidos
+    usuario.failed_login_attempts = 0
+    usuario.locked_until = None
+    usuario.save()
     # Todo correcto: generar y devolver el JWT
     return Response(generar_jwt(usuario.id), status=200)
 
@@ -166,7 +184,9 @@ def verify_identity(request):
     usuario.totp_failed_attempts = 0
     usuario.totp_locked_until = None
     usuario.save()
-    return Response({"temp_token": temp_token, "message": "Identidad verificada. Ahora ingrese la nueva contraseña."})
+    return Response({"temp_token": temp_token, 
+                     "message": "Identidad verificada. Ahora ingrese la nueva contraseña."
+                     })
 
 # This endpoint is used to restore the password using a temporary token
 # It checks the temporary token and updates the user's password if valid.
