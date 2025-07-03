@@ -28,7 +28,7 @@ def crear_asesor_admin(request):
     if payload:
         usuario_id = payload.get("usuario_id")
         datos_usuario = get_datos_usuario(usuario_id)
-        if datos_usuario and datos_usuario.get("rol") == "administrador":
+        if datos_usuario and datos_usuario.get("rol") == "admin":
             data["password"] = hash_password(data["password"])
             serializer = UsuarioSerializer(data=data)
             if serializer.is_valid():
@@ -82,12 +82,34 @@ def traer_anuncios(request):
     if payload:
         usuario_id = payload.get("usuario_id")
         datos_usuario = get_datos_usuario(usuario_id)
-        if datos_usuario and datos_usuario.get("rol") == "admin":
-            anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True)
-            return Response(anuncios.data, status=200)
-        else:
-            return Response({"message": "No tienes permisos para ver los anuncios"}, status=403)
+        anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True)
+        return Response(anuncios.data, status=200)
+    
 
+@api_view(['DELETE'])
+def borrar_anuncio(request):
+    data = request.data.copy()
+    payload = validar_token(request)
+    if not payload:
+        return Response({"message": "Token inválido o no proporcionado"}, status=401)
+    
+    # Validación de campos obligatorios
+    if 'id' not in data:
+        return Response({"message": "Falta el campo: id"}, status=400)
+
+    if payload:
+        usuario_id = payload.get("usuario_id")
+        datos_usuario = get_datos_usuario(usuario_id)
+        if datos_usuario and datos_usuario.get("rol") == "admin":
+            try:
+                anuncio = Announcement.objects.get(id=data["id"])
+                anuncio.delete()
+                return Response({"message": "Anuncio borrado exitosamente"}, status=200)
+            except Announcement.DoesNotExist:
+                return Response({"message": "Anuncio no encontrado"}, status=404)
+        else:
+            return Response({"message": "No tienes permisos para borrar un anuncio"}, status=403)
+      
 @api_view(['DELETE'])
 def eliminar_usuario(request):
     payload = validar_token(request)
