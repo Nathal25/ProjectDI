@@ -109,4 +109,34 @@ def borrar_anuncio(request):
                 return Response({"message": "Anuncio no encontrado"}, status=404)
         else:
             return Response({"message": "No tienes permisos para borrar un anuncio"}, status=403)
-       
+      
+@api_view(['DELETE'])
+def eliminar_usuario(request):
+    payload = validar_token(request)
+    if not payload:
+        return Response({"error": "Token inválido o expirado"}, status=401)
+
+    usuario_id = payload.get("usuario_id")
+    if not usuario_id:
+        return Response({"error": "Token inválido"}, status=401)
+
+    try:
+        usuario = Usuario.objects.get(pk=usuario_id)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado en base de datos"}, status=404)
+
+    if usuario.rol != 'admin':
+        return Response({"error": "No tienes permiso para modificar turnos"}, status=403)
+
+    cedula = request.data.get("cedula")
+
+    if not cedula:
+        return Response({"error": "Debes proporcionar la cédula del usuario a eliminar"}, status=400)
+    
+    try:
+        usuario_eliminar = Usuario.objects.get(cedula=cedula)
+        usuario_eliminar.delete()
+        return Response({"mensaje": f"usuario con cedula {cedula} eliminado correctamente"}, status=200)
+    except Usuario.DoesNotExist:
+        return Response({"error": "uduario no encontrado con esa cedula"}, status=400)
+    

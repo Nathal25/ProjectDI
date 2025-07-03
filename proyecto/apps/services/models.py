@@ -11,10 +11,11 @@ class ServicioBase(models.Model):
         ('Atendido', 'atendido'),
     ]
     estado = models.CharField(max_length=10, choices=ESTADOS, default='Pendiente')
-    prioritario = models.IntegerField(unique=True,null=True, default=None, blank=True)
-    general = models.IntegerField(unique=True,null=True, default=None, blank=True)
+    prioritario = models.IntegerField(null=True, blank=True)
+    general = models.IntegerField(null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
-    
+    punto_atencion = models.CharField(max_length=100, null=True, blank=True)
+
     class Meta:
         abstract = True  # Define que esta clase no creará tabla en la base de datos
 
@@ -49,6 +50,10 @@ def asignar_turnos(sender, instance, **kwargs):
     if not instance.estado:
         instance.estado = 'Pendiente'
     if instance.usuario:
+        if not instance.punto_atencion:
+            instance.punto_atencion = instance.usuario.puntoAtencion
+
+
         if not instance.prioritario and not instance.general:
             if instance.usuario.discapacidad or instance.usuario.embarazo:
                 instance.prioritario = obtener_siguiente_turno(sender, "prioritario")

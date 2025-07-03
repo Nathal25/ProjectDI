@@ -6,6 +6,7 @@ from apps.services.models import ConsultaMedica, ReclamarMedicamentos, Asesorami
 from apps.authentication.models import Usuario
 from django.contrib.auth.decorators import login_required
 from .permissions import IsAdminRole
+from apps.authentication.views import decodificar_jwt
 
 SERVICIOS = {
     'consulta': ConsultaMedica,
@@ -13,12 +14,19 @@ SERVICIOS = {
     'asesoramiento': Asesoramiento,
 }
 
+
 # 1. Estadísticas de servicios genéricos
 # Esta vista permite obtener estadísticas de un servicio específico (consulta, medicamentos, asesoramiento)
 @permission_classes([IsAdminRole])
 @api_view(['GET', 'POST'])
 def estadisticas_servicios_generico(request):
+    usuario_admin = get_punto_atencion_admin(request)
+    if IsAdminRole().has_permission(request, None) is False:
+        return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
     
+    punto_atencion = usuario_admin.puntoAtencion
+    filtro = {'usuario__puntoAtencion': punto_atencion}
+
     # Soporta GET (params) o POST (body JSON)
     if request.method == 'GET':
         servicio = request.query_params.get('servicio')
@@ -34,23 +42,25 @@ def estadisticas_servicios_generico(request):
         return Response({'error': 'Servicio inválido.'}, status=400)
 
     respuesta = {}
+    # Validar punto de atención
+    filtro = {'usuario__puntoAtencion': punto_atencion}
     if tipo_turno == 'prioritario':
-        total_prioritario = modelo.objects.filter(prioritario__isnull=False).count()
+        total_prioritario = modelo.objects.filter(prioritario__isnull=False, **filtro).count()
         respuesta['prioritario'] = {
             'servicio': servicio,
             'total': total_prioritario,
             'porcentaje': 100.0
         }
     elif tipo_turno == 'general':
-        total_general = modelo.objects.filter(general__isnull=False).count()
+        total_general = modelo.objects.filter(general__isnull=False, **filtro).count()
         respuesta['general'] = {
             'servicio': servicio,
             'total': total_general,
             'porcentaje': 100.0
         }
     else:
-        total_prioritario = modelo.objects.filter(prioritario__isnull=False).count()
-        total_general = modelo.objects.filter(general__isnull=False).count()
+        total_prioritario = modelo.objects.filter(prioritario__isnull=False, **filtro).count()
+        total_general = modelo.objects.filter(general__isnull=False, **filtro).count()
         total = total_prioritario + total_general
         respuesta = {
             'servicio': servicio,
@@ -70,8 +80,14 @@ def estadisticas_servicios_generico(request):
 @permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_solicitud_servicios(request):
-    # Obtener usuarios con sus solicitudes totales
-    usuarios = Usuario.objects.annotate(
+    usuario_admin = get_punto_atencion_admin(request)
+
+    if IsAdminRole().has_permission(request, None) is False:
+        return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
+    
+    punto_atencion = usuario_admin.puntoAtencion
+
+    usuarios = Usuario.objects.filter(puntoAtencion=punto_atencion).annotate(
         total_solicitudes=Count('consultamedica_turnos') + 
         Count('reclamarmedicamentos_turnos') + 
         Count('asesoramiento_turnos')
@@ -97,12 +113,17 @@ def estadisticas_solicitud_servicios(request):
 @permission_classes([IsAdminRole])
 @api_view(['GET'])
 def estadisticas_tipos_servicio(request):
+    usuario_admin = get_punto_atencion_admin(request)
+    if IsAdminRole().has_permission(request, None) is False:
+        return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)
+    punto_atencion = usuario_admin.puntoAtencion
+    # Inicializar contadores
     total_prioritario = 0
     total_general = 0
     
     # Calcular para cada modelo de servicio
     for modelo in [ConsultaMedica, ReclamarMedicamentos, Asesoramiento]:
-        stats = modelo.objects.aggregate(
+        stats = modelo.objects.filter(punto_atencion=punto_atencion).aggregate(
             prio=Count('id', filter=Q(prioritario__isnull=False)),
             gen=Count('id', filter=Q(general__isnull=False))
         )
@@ -127,39 +148,46 @@ def estadisticas_tipos_servicio(request):
 # incluyendo el total de turnos, turnos atendidos, y la cantidad de turnos prioritarios y generales.
 @permission_classes([IsAdminRole])
 @api_view(['GET'])
-#@permission_classes([IsAdminUser])
 def rendimiento_punto_atencion(request):
+    if IsAdminRole().has_permission(request, None) is False:
+        return Response({"error": "No tienes permiso para acceder a esta vista"}, status=403)   
+    
+    # Obtener todos los puntos de atención únicos
     puntos = Usuario.objects.values_list('puntoAtencion', flat=True).distinct()
     resultado = []
     for punto in puntos:
-        # Cantidad total de turnos en el punto
+        # Total de turnos en el punto
         total = (
             ConsultaMedica.objects.filter(usuario__puntoAtencion=punto).count() +
             ReclamarMedicamentos.objects.filter(usuario__puntoAtencion=punto).count() +
             Asesoramiento.objects.filter(usuario__puntoAtencion=punto).count()
         )
+        # Total de turnos atendidos en el punto
         atendidos = (
             ConsultaMedica.objects.filter(usuario__puntoAtencion=punto, estado='Atendido').count() +
             ReclamarMedicamentos.objects.filter(usuario__puntoAtencion=punto, estado='Atendido').count() +
             Asesoramiento.objects.filter(usuario__puntoAtencion=punto, estado='Atendido').count()
         )
-        # Cantidad de turnos prioritarios y generales
-        total_prioritario = (
-            ConsultaMedica.objects.filter(usuario__puntoAtencion=punto, prioritario__isnull=False).count() +
-            ReclamarMedicamentos.objects.filter(usuario__puntoAtencion=punto, prioritario__isnull=False).count() +
-            Asesoramiento.objects.filter(usuario__puntoAtencion=punto, prioritario__isnull=False).count()
-        )
-        total_general = (
-            ConsultaMedica.objects.filter(usuario__puntoAtencion=punto, general__isnull=False).count() +
-            ReclamarMedicamentos.objects.filter(usuario__puntoAtencion=punto, general__isnull=False).count() +
-            Asesoramiento.objects.filter(usuario__puntoAtencion=punto, general__isnull=False).count()
-        )
+        porcentaje = round((atendidos / total) * 100, 2) if total else 0
         resultado.append({
             "punto_atencion": punto,
             "total_turnos": total,
-            "turnos_atendidos": atendidos,
-            "total_prioritario": total_prioritario,
-            "total_general": total_general,
-            "porcentaje_atendidos": round((atendidos/total)*100, 2) if total else 0
+            "total_atendidos": atendidos,
+            "porcentaje_atendidos": porcentaje
         })
     return Response(resultado)
+
+#Función auxiliar para obtener el punto de atención del usuario administrador
+def get_punto_atencion_admin(request):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+    token = auth_header.split(' ')[1]
+    payload = decodificar_jwt(token)
+    if not payload:
+        return None
+    usuario_id = payload.get("usuario_id")
+    try:
+        return Usuario.objects.get(pk=usuario_id)
+    except Usuario.DoesNotExist:
+        return None
