@@ -28,7 +28,7 @@ def crear_asesor_admin(request):
     if payload:
         usuario_id = payload.get("usuario_id")
         datos_usuario = get_datos_usuario(usuario_id)
-        if datos_usuario and datos_usuario.get("rol") == "administrador":
+        if datos_usuario and datos_usuario.get("rol") == "admin":
             data["password"] = hash_password(data["password"])
             serializer = UsuarioSerializer(data=data)
             if serializer.is_valid():
