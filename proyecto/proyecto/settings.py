@@ -85,7 +85,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
 ]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdi.onrender.com"]
 
 ROOT_URLCONF = 'proyecto.urls'
 
