@@ -29,8 +29,9 @@ SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
 SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=False, cast=bool)
 CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=False, cast=bool)
 
-SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "None"  # Configuración para cookies de sesión
+CSRF_COOKIE_HTTPONLY = True  # Evitar acceso a cookies CSRF desde JavaScript
+CSRF_COOKIE_SAMESITE = "None"
 
 LOGIN_RATE_LIMIT = '5/m' #maxsimo 5 intentos de inicio de sesión por minuto
 LOGIN_FAILS_LIMIT = 5   # máximo 5 intentos fallidos de inicio de sesión
@@ -85,7 +86,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
 ]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdi.onrender.com"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdesarrollo.onrender.com"]
 
 ROOT_URLCONF = 'proyecto.urls'
 
