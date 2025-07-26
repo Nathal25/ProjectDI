@@ -94,15 +94,15 @@ def borrar_anuncio(request):
         return Response({"message": "Token inválido o no proporcionado"}, status=401)
     
     # Validación de campos obligatorios
-    if 'id' not in data:
-        return Response({"message": "Falta el campo: id"}, status=400)
+    if 'title' not in data:
+        return Response({"message": "Falta el campo: titulo"}, status=400)
 
     if payload:
         usuario_id = payload.get("usuario_id")
         datos_usuario = get_datos_usuario(usuario_id)
         if datos_usuario and datos_usuario.get("rol") == "admin":
             try:
-                anuncio = Announcement.objects.get(id=data["id"])
+                anuncio = Announcement.objects.get(title=data["title"])
                 anuncio.delete()
                 return Response({"message": "Anuncio borrado exitosamente"}, status=200)
             except Announcement.DoesNotExist:
