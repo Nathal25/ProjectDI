@@ -293,42 +293,43 @@ Ejemplo de respuesta exitosa:
     ]
 }
 """
-@api_view(['GET'])
-def visualizar_turnos(request):
-    servicio = request.query_params.get("servicio")
-    punto_atencion = request.query_params.get("puntoAtencion")
-    if not servicio:
-        return Response({"error": "Debes enviar el parámetro 'servicio'"}, status=400)
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
+@api_view(['POST'])
+def visualizar_turnos(request):
+    punto_atencion = request.data.get("puntoAtencion")
+    
     if not punto_atencion:
         return Response({"error": "Debes enviar el parámetro 'puntoAtencion'"}, status=400)
-    Modelo = SERVICIOS.get(servicio.lower())
-    if not Modelo:
-        return Response({"error": "Servicio inválido"}, status=400)
-
-    # Turno actual
-    turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
-
-    # Turnos pasados (últimos 4)
-    turnos_pasados = Modelo.objects.filter(estado='Pasado', punto_atencion=punto_atencion).order_by('-id')[:4]
-
-    # Formatear resultados
-    def formatear_turno(turno):
-        if turno is None:
-            return None
-        tipo = "prioritario" if turno.prioritario is not None else "general"
-        numero = turno.prioritario if tipo == "prioritario" else turno.general
-        return {
-            "id": turno.id,
-            "tipo": tipo,
-            "numero": numero,
-            "punto": punto_atencion
+    
+    resultado = {}
+    
+    for servicio, Modelo in SERVICIOS.items():
+        # Turno actual
+        turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
+        
+        # Turnos pasados (últimos 4)
+        turnos_pasados = Modelo.objects.filter(estado='Pasado', punto_atencion=punto_atencion).order_by('-id')[:4]
+        
+        def formatear_turno(turno):
+            if turno is None:
+                return None
+            tipo = "prioritario" if turno.prioritario is not None else "general"
+            numero = turno.prioritario if tipo == "prioritario" else turno.general
+            return {
+                "id": turno.id,
+                "tipo": tipo,
+                "numero": numero,
+                "punto": punto_atencion
+            }
+        
+        resultado[servicio] = {
+            "turno_actual": formatear_turno(turno_actual),
+            "ultimos_turnos": [formatear_turno(t) for t in turnos_pasados]
         }
-
-    return Response({
-        "turno_actual": formatear_turno(turno_actual),
-        "ultimos_turnos": [formatear_turno(t) for t in turnos_pasados]
-    })
+    
+    return Response(resultado)
 """
 turno_pendiente(request)
 -------------------
