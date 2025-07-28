@@ -1,4 +1,4 @@
-from .views import crear_asesor_admin, subir_anuncio, traer_anuncios, eliminar_usuario,borrar_anuncio
+from .views import crear_asesor_admin, subir_anuncio, traer_anuncios, eliminar_usuario,borrar_anuncio,list_users_by_puntoA,deactive_user
 from django.urls import path
 
 urlpatterns = [
@@ -7,4 +7,6 @@ urlpatterns = [
     path('traer_anuncios', traer_anuncios , name='traer_anuncios'),
     path('eliminar_usuario', eliminar_usuario, name='eliminar_usuario'),
     path('borrar_anuncio', borrar_anuncio, name='borrar_anuncio'),
+    path('list_users_by_puntoA', list_users_by_puntoA, name='list_users_by_puntoA'),
+    path('deactive_user', deactive_user, name='deactive_user'),
 ]

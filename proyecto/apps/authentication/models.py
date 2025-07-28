@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.core.validators import RegexValidator
 
 class Usuario(models.Model):
@@ -44,7 +45,9 @@ class Usuario(models.Model):
     totp_confirmed = models.BooleanField(default=False)
     totp_failed_attempts = models.PositiveIntegerField(default=0)
     totp_locked_until = models.DateTimeField(null=True)
-    
+    last_login = models.DateTimeField(null=True, blank=True)
+    active= models.BooleanField(default=True)  # Agregado para manejar el estado del usuario
+
     def __str__(self):
         return self.nombre  # Arreglado (antes era self.username, pero no existe ese campo)
     

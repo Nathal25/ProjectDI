@@ -6,6 +6,7 @@ from .serializers import UsuarioSerializer
 from django.core.serializers import serialize
 from django.http import JsonResponse
 from django.utils.html import escape
+from django.utils import timezone
 from django.conf import settings
 from django_ratelimit.decorators import ratelimit
 import bcrypt
@@ -84,6 +85,20 @@ def validar_password_usuario_api(request):
     except Usuario.DoesNotExist:
         return Response({"message": "Usuario no encontrado"}, status=404)
     
+    if not usuario.active:
+        return Response({"message": "Usuario inactivo"}, status=403)
+
+     # Verificar si han pasado más de 5 años desde el último login
+    if usuario.last_login:
+        limite_inactividad = usuario.last_login + timedelta(days=5*365)
+        if timezone.now() > limite_inactividad:
+            # Cambiar estado a inactivo y guardar
+            usuario.activo = False
+            usuario.save()
+            return Response({"message": "Usuario inactivo debido a inactividad prolongada."}, status=403)
+    else:
+        pass
+
     # Verificar si el usuario está bloqueado
     if usuario.locked_until and usuario.locked_until > timezone.now():
         tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
@@ -111,6 +126,10 @@ def validar_password_usuario_api(request):
     # Reiniciar contadores de intentos fallidos
     usuario.failed_login_attempts = 0
     usuario.locked_until = None
+    usuario.save()
+
+    # Actualizar el último login
+    usuario.last_login = timezone.now()
     usuario.save()
     # Todo correcto: generar y devolver el JWT
     return Response(generar_jwt(usuario.id), status=200)
