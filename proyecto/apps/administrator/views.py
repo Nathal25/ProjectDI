@@ -71,15 +71,8 @@ def subir_anuncio(request):
 
 @api_view(['GET'])
 def traer_anuncios(request):
-    payload = validar_token(request)
-    if not payload:
-        return Response({"message": "Token inválido o no proporcionado"}, status=401)
-    
-    if payload:
-        usuario_id = payload.get("usuario_id")
-        datos_usuario = get_datos_usuario(usuario_id)
-        anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True)
-        return Response(anuncios.data, status=200)
+    anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True)
+    return Response(anuncios.data, status=200)
     
 
 @api_view(['DELETE'])
