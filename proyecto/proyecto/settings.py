@@ -74,6 +74,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://samu-componentes.vercel.app",
 ]
 CORS_ALLOW_CREDENTIALS = True  # Permitir credenciales (cookies, autenticación HTTP, etc.)
 # Permitir encabezados específicos en las solicitudes CORS
@@ -86,7 +87,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
 ]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdesarrollo.onrender.com","samu-componentes.vercel.app"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdesarrollo.onrender.com","samu-componentes.vercel.app",]
 
 ROOT_URLCONF = 'proyecto.urls'
 
