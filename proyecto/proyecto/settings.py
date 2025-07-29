@@ -86,7 +86,7 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
 ]
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdesarrollo.onrender.com","samu-componentes.vercel.app"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "projectdesarrollo.onrender.com","samu-componentes.vercel.app",]
 
 ROOT_URLCONF = 'proyecto.urls'
 
