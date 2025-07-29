@@ -1,13 +1,14 @@
 #from apps.authentication import models
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario
+from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario, Truno
 from apps.authentication.utils import validar_token
 from django.db import transaction, models
 from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from apps.authentication.views import decodificar_jwt, get_datos_usuario
 from django.core.cache import cache
+
 
 #tipos de servicios
 SERVICIOS = {
@@ -294,7 +295,7 @@ Ejemplo de respuesta exitosa:
 }
 """
 
-@api_view(['POST'])
+@api_view(['GET'])
 def visualizar_turnos(request):
     punto_atencion = request.data.get("puntoAtencion")
     
@@ -302,6 +303,11 @@ def visualizar_turnos(request):
         return Response({"error": "Debes enviar el parámetro 'puntoAtencion'"}, status=400)
     
     resultado = {}
+
+    def generar_codigo(tipo, numero, servicio):
+        letra_prioridad = "P" if tipo == "prioritario" else "G"
+        letra_servicio = servicio[0].upper()
+        return f"{letra_prioridad}{str(numero).zfill(2)}{letra_servicio}"
     
     for servicio, Modelo in SERVICIOS.items():
         # Turno actual
@@ -315,10 +321,12 @@ def visualizar_turnos(request):
                 return None
             tipo = "prioritario" if turno.prioritario is not None else "general"
             numero = turno.prioritario if tipo == "prioritario" else turno.general
+            codigo = generar_codigo(tipo, numero, servicio)
             return {
                 "id": turno.id,
                 "tipo": tipo,
                 "numero": numero,
+                "codigo": codigo,
                 "punto": punto_atencion
             }
         
@@ -363,18 +371,22 @@ Ejemplo de respuesta exitosa:
 """
 @api_view(['GET'])
 def turno_pendiente(request):
-    # Validar token del usuario
-    payload = validar_token(request)
+    # # Validar token del usuario
+    # payload = validar_token(request)
 
-    if not payload:
-        return Response({"error": "Token inválido o expirado"}, status=401)
+    # if not payload:
+    #     return Response({"error": "Token inválido o expirado"}, status=401)
 
-    usuario_id = payload.get("usuario_id")
-    if not usuario_id:
-        return Response({"error": "Token inválido"}, status=401)
+    # usuario_id = payload.get("usuario_id")
+    # if not usuario_id:
+    #     return Response({"error": "Token inválido"}, status=401)
+    cedula = request.data.get("cedula")
+    
+    if not cedula:
+        return Response({"error": "Debes enviar el parámetro 'cedula'"}, status=400)
 
     try:
-        usuario = Usuario.objects.get(pk=usuario_id)
+        usuario = Usuario.objects.get(cedula=cedula)
     except Usuario.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)
 
