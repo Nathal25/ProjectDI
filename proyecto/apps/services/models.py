@@ -4,6 +4,12 @@ from django.dispatch import receiver
 from apps.authentication.models import Usuario
 
 MAX_TURNO=100
+
+
+class Truno(models.Model):
+    PRIORIDAD_CHOICES = [('P', 'Prioritario'), ('G', 'General')]
+    SERVICIO_CHOICES = [('C', 'Consulta'), ('M', 'Medicamentos'), ('A', 'Asesoramiento')]
+
 # Clase base abstracta para centralizar campos comunes
 class ServicioBase(models.Model):
     ESTADOS = [
