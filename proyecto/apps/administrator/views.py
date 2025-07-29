@@ -71,7 +71,7 @@ def subir_anuncio(request):
 
 @api_view(['GET'])
 def traer_anuncios(request):
-    anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True)
+    anuncios = AnnouncementSerializer(Announcement.objects.all(), many=True, context={'request': request})
     return Response(anuncios.data, status=200)
     
 
