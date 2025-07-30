@@ -70,7 +70,12 @@ def registrar_usuario_api(request):
     return Response(serializer.errors, status=400)
 
 
-#@ratelimit(key='post:cedula', rate=settings.LOGIN_RATE_LIMIT, method='POST', block=False)
+def verify_blocked_usuario(usuario):
+    if usuario.locked_until and usuario.locked_until > timezone.now():
+        tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
+        return False, f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
+    return True, None
+
 @api_view(['POST'])
 def validar_password_usuario_api(request):
     
@@ -100,13 +105,13 @@ def validar_password_usuario_api(request):
         pass
 
     # Verificar si el usuario está bloqueado
-    if usuario.locked_until and usuario.locked_until > timezone.now():
-        tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
-        return Response({
-            'message': f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
-        }, status=423)
+    blocked= verify_blocked_usuario(usuario)
+    if not blocked[0]:
+        return Response({"message": blocked[1]}, status=423)
+
     # Verificación de contraseña
     # Verificar contraseña
+    tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
     password_bytes = password.encode('utf-8')
     stored_hash = usuario.password.encode('utf-8')
     if not bcrypt.checkpw(password_bytes, stored_hash):
@@ -116,7 +121,7 @@ def validar_password_usuario_api(request):
             usuario.locked_until = timezone.now() + timedelta(seconds=settings.LOGIN_FAILS_TIMEOUT)
             usuario.save()
             return Response({
-                'message': 'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo más tarde.'
+                'message': f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
             }, status=423)
         usuario.save()
         return Response({
