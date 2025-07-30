@@ -76,6 +76,17 @@ def verify_blocked_usuario(usuario):
         return False, f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
     return True, None
 
+def verify_last_login(usuario):
+    if usuario.last_login:
+        limite_inactividad = usuario.last_login + timedelta(days=5*365)
+        if timezone.now() > limite_inactividad:
+            # Cambiar estado a inactivo y guardar
+            usuario.active = False
+            usuario.save()
+            return False, "Usuario inactivo debido a inactividad prolongada."
+    return True, None
+
+
 @api_view(['POST'])
 def validar_password_usuario_api(request):
     
@@ -94,24 +105,17 @@ def validar_password_usuario_api(request):
         return Response({"message": "Usuario inactivo"}, status=403)
 
      # Verificar si han pasado más de 5 años desde el último login
-    if usuario.last_login:
-        limite_inactividad = usuario.last_login + timedelta(days=5*365)
-        if timezone.now() > limite_inactividad:
-            # Cambiar estado a inactivo y guardar
-            usuario.activo = False
-            usuario.save()
-            return Response({"message": "Usuario inactivo debido a inactividad prolongada."}, status=403)
-    else:
-        pass
+    verify_last_login_result = verify_last_login(usuario)
+    if not verify_last_login_result[0]:
+        return Response({"message": verify_last_login_result[1]}, status=403)
 
-    # Verificar si el usuario está bloqueado
+    # Verificar el bloqueo por tiempo inactivo
     blocked= verify_blocked_usuario(usuario)
     if not blocked[0]:
         return Response({"message": blocked[1]}, status=423)
 
     # Verificación de contraseña
-    # Verificar contraseña
-    tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
+
     password_bytes = password.encode('utf-8')
     stored_hash = usuario.password.encode('utf-8')
     if not bcrypt.checkpw(password_bytes, stored_hash):
@@ -119,6 +123,7 @@ def validar_password_usuario_api(request):
         intentos_restantes = settings.LOGIN_FAILS_LIMIT - usuario.failed_login_attempts
         if usuario.failed_login_attempts >= settings.LOGIN_FAILS_LIMIT:
             usuario.locked_until = timezone.now() + timedelta(seconds=settings.LOGIN_FAILS_TIMEOUT)
+            tiempo_restante = int((usuario.locked_until - timezone.now()).total_seconds() // 60) + 1
             usuario.save()
             return Response({
                 'message': f'Usuario bloqueado por demasiados intentos fallidos. Intenta de nuevo en {tiempo_restante} minutos.'
