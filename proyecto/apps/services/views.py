@@ -143,6 +143,12 @@ Parámetros de consulta (query params):
 - 500 Internal Server Error: Si ocurre un error inesperado.
           "error": "Descripción del error"
 """
+#funcion para codigo de turnos ej P01C
+def generar_codigo(tipo, numero, servicio):
+        letra_prioridad = "P" if tipo == "prioritario" else "G"
+        letra_servicio = servicio[0].upper()
+        return f"{letra_prioridad}{str(numero).zfill(2)}{letra_servicio}"
+    
 @api_view(['GET'])
 def solicitud_turnos(request):
     payload = validar_token(request)
@@ -174,12 +180,14 @@ def solicitud_turnos(request):
         if turno_existente:
             tipo = "prioritario" if turno_existente.prioritario is not None else "general"
             numero = turno_existente.prioritario if tipo == "prioritario" else turno_existente.general
+            codigo = generar_codigo(tipo,numero,servicio)
             return Response({
                 "mensaje": "Ya tienes un turno pendiente",
                 "turno": {
                     "id": turno_existente.id,
                     "tipo": tipo,
-                    "numero": numero
+                    "numero": numero,
+                    "codigo": codigo
                 }
             }, status=200)
         
@@ -188,11 +196,17 @@ def solicitud_turnos(request):
             if usuario.discapacidad:
                 ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_p=models.Max("prioritario"))["max_p"] or 0
                 turno = modelo_servicio.objects.create(prioritario=ultimo + 1, general=None, usuario=usuario)
-                return Response({"turno_prioritario": turno.prioritario}, status=201)
+                tipo = "prioritario"
+                numero = turno.prioritario
+                codigo = generar_codigo(tipo, numero, servicio)
+                return Response({"turno_prioritario": turno.prioritario, "codigo": codigo}, status=201)
             else:
                 ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_g=models.Max("general"))["max_g"] or 0
                 turno = modelo_servicio.objects.create(prioritario=None, general=ultimo + 1, usuario=usuario)
-                return Response({"turno_general": turno.general}, status=201)
+                tipo = "general"
+                numero = turno.general
+                codigo = generar_codigo(tipo, numero, servicio)
+                return Response({"turno_general": turno.general, "codigo": codigo}, status=201)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 """
@@ -304,11 +318,7 @@ def visualizar_turnos(request):
     
     resultado = {}
 
-    def generar_codigo(tipo, numero, servicio):
-        letra_prioridad = "P" if tipo == "prioritario" else "G"
-        letra_servicio = servicio[0].upper()
-        return f"{letra_prioridad}{str(numero).zfill(2)}{letra_servicio}"
-    
+    #generar_codigo
     for servicio, Modelo in SERVICIOS.items():
         # Turno actual
         turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
