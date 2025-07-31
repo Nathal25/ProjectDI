@@ -142,7 +142,7 @@ def validar_password_usuario_api(request):
     usuario.last_login = timezone.now()
     usuario.save()
     # Todo correcto: generar y devolver el JWT
-    return Response(generar_jwt(usuario.id), status=200)
+    return Response({'message': usuario.rol, 'token': generar_jwt(usuario.id)}, status=200)
 
 @api_view(['GET'])  # Cambiamos a GET porque los tokens no se mandan por POST
 def validar_token_api(request):
