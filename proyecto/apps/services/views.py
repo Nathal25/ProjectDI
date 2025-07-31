@@ -311,7 +311,7 @@ Ejemplo de respuesta exitosa:
 
 @api_view(['GET'])
 def visualizar_turnos(request):
-    punto_atencion = request.data.get("puntoAtencion")
+    punto_atencion = request.query_params.get("puntoAtencion")
     
     if not punto_atencion:
         return Response({"error": "Debes enviar el parámetro 'puntoAtencion'"}, status=400)
