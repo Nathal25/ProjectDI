@@ -390,7 +390,7 @@ def turno_pendiente(request):
     # usuario_id = payload.get("usuario_id")
     # if not usuario_id:
     #     return Response({"error": "Token inválido"}, status=401)
-    cedula = request.data.get("cedula")
+    cedula = request.query_params.get("cedula")
     
     if not cedula:
         return Response({"error": "Debes enviar el parámetro 'cedula'"}, status=400)
