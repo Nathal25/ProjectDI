@@ -1,7 +1,7 @@
 #from apps.authentication import models
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario, Truno
+from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario, Turno
 from apps.authentication.utils import validar_token
 from django.db import transaction, models
 from django.db.models import Max
@@ -143,6 +143,12 @@ Parámetros de consulta (query params):
 - 500 Internal Server Error: Si ocurre un error inesperado.
           "error": "Descripción del error"
 """
+#funcion para codigo de turnos ej P01C
+def generar_codigo(tipo, numero, servicio):
+        letra_prioridad = "P" if tipo == "prioritario" else "G"
+        letra_servicio = servicio[0].upper()
+        return f"{letra_prioridad}{str(numero).zfill(2)}{letra_servicio}"
+    
 @api_view(['GET'])
 def solicitud_turnos(request):
     payload = validar_token(request)
@@ -157,7 +163,6 @@ def solicitud_turnos(request):
         usuario = Usuario.objects.get(pk=usuario_id)
     except Usuario.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)
-    
 
     servicio = request.query_params.get("service")
 
@@ -169,30 +174,50 @@ def solicitud_turnos(request):
         return Response({"error": "Servicio inválido"}, status=400)
 
     try:
-        # Verificar si ya tiene un turno pendiente en ese servicio
+        # Verificar si el usuario ya tiene un turno pendiente en este servicio
         turno_existente = modelo_servicio.objects.filter(usuario=usuario, estado='Pendiente').first()
+        
         if turno_existente:
+            # Si ya tiene un turno pendiente, devolver la información del turno existente
             tipo = "prioritario" if turno_existente.prioritario is not None else "general"
             numero = turno_existente.prioritario if tipo == "prioritario" else turno_existente.general
+            codigo = generar_codigo(tipo, numero, servicio)
+            
             return Response({
-                "mensaje": "Ya tienes un turno pendiente",
-                "turno": {
-                    "id": turno_existente.id,
-                    "tipo": tipo,
-                    "numero": numero
-                }
+                "mensaje": f"Ya tienes un turno pendiente en {servicio}",
+                "id": turno_existente.id,
+                "numero": numero,
+                "tipo": tipo,
+                "codigo": codigo,
+                "punto": usuario.puntoAtencion
             }, status=200)
         
-        with transaction.atomic():
-            punto = usuario.puntoAtencion
-            if usuario.discapacidad:
-                ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_p=models.Max("prioritario"))["max_p"] or 0
-                turno = modelo_servicio.objects.create(prioritario=ultimo + 1, general=None, usuario=usuario)
-                return Response({"turno_prioritario": turno.prioritario}, status=201)
-            else:
-                ultimo = modelo_servicio.objects.filter(usuario__puntoAtencion=punto).aggregate(max_g=models.Max("general"))["max_g"] or 0
-                turno = modelo_servicio.objects.create(prioritario=None, general=ultimo + 1, usuario=usuario)
-                return Response({"turno_general": turno.general}, status=201)
+        # Si no tiene turno pendiente, crear uno nuevo
+        # El punto de atención se toma automáticamente del usuario (del token)
+        nuevo_turno = modelo_servicio.objects.create(usuario=usuario)
+        
+        # Los campos de turno se asignan automáticamente en el pre_save signal
+        # que ya tienes implementado en models.py
+        
+        tipo = "prioritario" if nuevo_turno.prioritario is not None else "general"
+        numero = nuevo_turno.prioritario if tipo == "prioritario" else nuevo_turno.general
+        codigo = generar_codigo(tipo, numero, servicio)
+        
+        if tipo == "prioritario":
+            return Response({
+                "mensaje": f"Turno prioritario asignado en {servicio}",
+                "turno_prioritario": numero,
+                "codigo": codigo,
+                "punto": usuario.puntoAtencion
+            }, status=201)
+        else:
+            return Response({
+                "mensaje": f"Turno general asignado en {servicio}",
+                "turno_general": numero,
+                "codigo": codigo,
+                "punto": usuario.puntoAtencion
+            }, status=201)
+            
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 """
@@ -224,7 +249,7 @@ Ejemplo de respuesta exitosa:
 """
 @api_view(['POST'])
 def cancelar_turno(request):
-   #validar token
+    # Validar token
     payload = validar_token(request)
 
     if not payload:
@@ -249,10 +274,11 @@ def cancelar_turno(request):
         return Response({"error": "Servicio inválido"}, status=400)
 
     # Buscar el turno pendiente del usuario en ese servicio
+    # El filtro automáticamente usa el usuario del token, que ya tiene su punto de atención
     turno = Modelo.objects.filter(usuario=usuario, estado='Pendiente').first()
 
     if not turno:
-        return Response({"error": "No tienes turnos pendientes en este servicio"}, status=404)
+        return Response({"error": f"No tienes turnos pendientes en el servicio '{servicio}'"}, status=404)
 
     turno_id = turno.id
     turno.delete()
@@ -297,24 +323,20 @@ Ejemplo de respuesta exitosa:
 
 @api_view(['GET'])
 def visualizar_turnos(request):
-    punto_atencion = request.data.get("puntoAtencion")
+    punto_atencion = request.query_params.get("puntoAtencion")
     
     if not punto_atencion:
         return Response({"error": "Debes enviar el parámetro 'puntoAtencion'"}, status=400)
     
     resultado = {}
 
-    def generar_codigo(tipo, numero, servicio):
-        letra_prioridad = "P" if tipo == "prioritario" else "G"
-        letra_servicio = servicio[0].upper()
-        return f"{letra_prioridad}{str(numero).zfill(2)}{letra_servicio}"
-    
+    #generar_codigo
     for servicio, Modelo in SERVICIOS.items():
         # Turno actual
         turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
         
         # Turnos pasados (últimos 4)
-        turnos_pasados = Modelo.objects.filter(estado='Pasado', punto_atencion=punto_atencion).order_by('-id')[:4]
+        turnos_pasados = Modelo.objects.filter(estado='Pendiente', punto_atencion=punto_atencion).order_by('-id')[:4]
         
         def formatear_turno(turno):
             if turno is None:
@@ -380,7 +402,7 @@ def turno_pendiente(request):
     # usuario_id = payload.get("usuario_id")
     # if not usuario_id:
     #     return Response({"error": "Token inválido"}, status=401)
-    cedula = request.data.get("cedula")
+    cedula = request.query_params.get("cedula")
     
     if not cedula:
         return Response({"error": "Debes enviar el parámetro 'cedula'"}, status=400)

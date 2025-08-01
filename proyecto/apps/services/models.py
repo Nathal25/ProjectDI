@@ -6,7 +6,7 @@ from apps.authentication.models import Usuario
 MAX_TURNO=100
 
 
-class Truno(models.Model):
+class Turno(models.Model):
     PRIORIDAD_CHOICES = [('P', 'Prioritario'), ('G', 'General')]
     SERVICIO_CHOICES = [('C', 'Consulta'), ('M', 'Medicamentos'), ('A', 'Asesoramiento')]
 
@@ -15,8 +15,9 @@ class ServicioBase(models.Model):
     ESTADOS = [
         ('Pendiente', 'pendiente'),
         ('Atendido', 'atendido'),
+        ('Pasado', 'pasado'),
     ]
-    estado = models.CharField(max_length=10, choices=ESTADOS, default='Pendiente')
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='Pendiente')  # Cambiar max_length a 15
     prioritario = models.IntegerField(null=True, blank=True)
     general = models.IntegerField(null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='%(class)s_turnos', null=True, blank=True)
@@ -61,9 +62,8 @@ def asignar_turnos(sender, instance, **kwargs):
 
 
         if not instance.prioritario and not instance.general:
-            if instance.usuario.discapacidad or instance.usuario.embarazo:
+            if instance.usuario.discapacidad:
                 instance.prioritario = obtener_siguiente_turno(sender, "prioritario")
             else:
                 instance.general = obtener_siguiente_turno(sender, "general")
 
- 
