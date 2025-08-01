@@ -336,7 +336,7 @@ def visualizar_turnos(request):
         turno_actual = Modelo.objects.filter(estado='Atendido', punto_atencion=punto_atencion).first()
         
         # Turnos pasados (últimos 4)
-        turnos_pasados = Modelo.objects.filter(estado='Pendiente', punto_atencion=punto_atencion).order_by('-id')[:4]
+        turnos_pasados = Modelo.objects.filter(estado='Pasado', punto_atencion=punto_atencion).order_by('-id')[:4]
         
         def formatear_turno(turno):
             if turno is None:
