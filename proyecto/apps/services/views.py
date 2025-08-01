@@ -1,7 +1,7 @@
 #from apps.authentication import models
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario, Turno
+from .models import ConsultaMedica, ReclamarMedicamentos, Asesoramiento, Usuario, Truno
 from apps.authentication.utils import validar_token
 from django.db import transaction, models
 from django.db.models import Max
